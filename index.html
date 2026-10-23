@@ -187,7 +187,7 @@ const dirProfile=()=>S.settings.profiles.find(p=>p.id===S.settings.dirProfile)||
 const auxProfile=()=>S.settings.profiles.find(p=>p.id===S.settings.auxProfile)||(S.settings.dirOn&&dirProfile())||mainProfile();
 function mergeRoles(msgs,first='user'){const out=[];for(const m of msgs){const r=m.role;if(out.length&&out[out.length-1].role===r)out[out.length-1].content+='\n\n'+m.content;else out.push({role:r,content:m.content})}
   if(out.length&&out[0].role!==first)out.unshift({role:first,content:'(Inicio de la conversación)'});return out}
-const VERSION='2026-10-23-e';
+const VERSION='2026-10-23-f';
 const SW_CACHE='taberna-v1';
 async function readSSE(resp,onData){const rd=resp.body.getReader(),dec=new TextDecoder();let buf='',all='',n=0;
   const line=l=>{l=l.replace(/\r$/,'');if(l.startsWith('data:')){const d=l.slice(5).trim();if(d&&d!=='[DONE]'){n++;onData(d)}}};
@@ -426,6 +426,12 @@ async function takeShared(){
       n+=await importAny(new File([blob],name,{type:blob.type}));await c.delete(k)}
     if(n){toast(n+' personaje(s) importado(s)');go('chars')}}
   catch(e){toast('Compartir: '+e.message,5000)}}
+async function forceUpdate(){
+  toast('Actualizando…');
+  try{if(navigator.serviceWorker)for(const r of await navigator.serviceWorker.getRegistrations())await r.unregister();
+    if(window.caches)for(const k of await caches.keys())await caches.delete(k);
+    for(const f of ['index.html','sw.js','manifest.webmanifest'])await fetch(f,{cache:'reload'})}catch{}
+  location.replace(location.pathname+'?v='+Date.now())}
 function exportChar(ch){const lb=S.lores.get(ch.loreId);return JSON.stringify({spec:'chara_card_v2',spec_version:'2.0',data:{name:ch.name,description:ch.description,personality:ch.personality,scenario:ch.scenario,first_mes:ch.first_mes,mes_example:ch.mes_example,system_prompt:ch.system_prompt,alternate_greetings:ch.alternate_greetings||[],tags:[],creator_notes:'',post_history_instructions:'',creator:'',character_version:'',extensions:{},
   character_book:lb?JSON.parse(exportLore(lb)):undefined}},null,1)}
 async function exportAll(){const d={v:1,ts:Date.now()};for(const s of ['characters','personas','lorebooks','chats','presets','kv','messages'])d[s]=await DB.all(s);
@@ -654,7 +660,7 @@ R.settings=()=>{const st=S.settings;const num=(k,label,min,max)=>field(label,h('
       toggle('Resumir automáticamente los mensajes antiguos',st.summarize,async v=>{st.summarize=v;await saveSettings()})),
     h('div',{class:'card'},h('h3',{},'Lorebook automático'),toggle('Actualizar lorebooks de personaje desde los chats',st.autoLore,async v=>{st.autoLore=v;await saveSettings()}),num('autoLoreEvery','Cada cuántas respuestas del personaje',1,30)),
     h('div',{class:'card'},h('h3',{},'Datos'),h('small',{id:'usage'},'Calculando uso…'),h('small',{},'Versión '+VERSION),
-      h('div',{class:'btns'},btn('⬇ Exportar respaldo',exportAll),btn('⬆ Importar respaldo',async()=>{const[f]=await pickFile('.json');if(!f)return;if(!confirm('Esto reemplaza TODOS los datos actuales. ¿Continuar?'))return;try{await importAll(f);location.reload()}catch(e){toast(e.message,4000)}}),
+      h('div',{class:'btns'},btn('↻ Buscar actualización',forceUpdate),btn('⬇ Exportar respaldo',exportAll),btn('⬆ Importar respaldo',async()=>{const[f]=await pickFile('.json');if(!f)return;if(!confirm('Esto reemplaza TODOS los datos actuales. ¿Continuar?'))return;try{await importAll(f);location.reload()}catch(e){toast(e.message,4000)}}),
         btn('Borrar todo',async()=>{if(!confirm('¿Borrar absolutamente todo?'))return;for(const s of ['characters','personas','lorebooks','chats','presets','kv','messages'])await DB.clear(s);location.reload()},'danger'))));
   if(navigator.storage&&navigator.storage.estimate)navigator.storage.estimate().then(e=>{const u=$('usage');if(u)u.textContent='Almacenamiento usado: '+(e.usage/1048576).toFixed(1)+' MB'})};
 const $=id=>document.getElementById(id);
