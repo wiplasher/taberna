@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="theme-color" content="#14151a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<title>Taberna</title>
+<style>
+:root{--bg:#14151a;--bg2:#1c1e26;--bg3:#272a36;--fg:#e8e9ee;--dim:#9a9eb0;--acc:#8b7cf6;--acc2:#6f61d9;--red:#e5646e;--ok:#5fc98b;--q:#f0c987;--r:14px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,Roboto,sans-serif;overscroll-behavior:none}
+body{display:flex;flex-direction:column;height:100dvh;padding-top:env(safe-area-inset-top)}
+button,input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{background:var(--bg3);border:1px solid #343848;border-radius:10px;padding:9px 11px;width:100%;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--acc)}
+textarea{resize:none;line-height:1.4}
+input[type=checkbox]{width:auto;accent-color:var(--acc)}
+small{color:var(--dim)}
+b{font-weight:600}
+#main{flex:1;overflow-y:auto;min-height:0}
+#nav{display:flex;background:var(--bg2);border-top:1px solid #2c2f3c;padding-bottom:env(safe-area-inset-bottom)}
+#nav button{flex:1;background:none;border:0;padding:8px 0 6px;color:var(--dim);font-size:11px;display:flex;flex-direction:column;align-items:center;gap:1px}
+#nav button span{font-size:19px;line-height:1.1}
+#nav button.on{color:var(--acc)}
+.bar{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg);position:sticky;top:0;z-index:2;min-height:52px}
+.bar .ttl{flex:1;font-weight:600;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .ttl small{display:block;font-weight:400;font-size:12px}
+.ic{background:none;border:0;font-size:22px;padding:2px 8px;color:var(--fg)}
+.list{padding:4px 12px 16px;display:flex;flex-direction:column;gap:8px}
+.row{display:flex;align-items:center;gap:12px;background:var(--bg2);border-radius:var(--r);padding:10px 12px}
+.row .grow{flex:1;min-width:0}
+.row .grow *{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.av{width:44px;height:44px;border-radius:50%;background:var(--bg3);flex:none;overflow:hidden;display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--acc)}
+.av img{width:100%;height:100%;object-fit:cover}
+.card{background:var(--bg2);border-radius:var(--r);padding:12px;margin:0 12px 10px;display:flex;flex-direction:column;gap:10px}
+.card h3{margin:0;font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld>span{font-size:12px;color:var(--dim)}
+.tg{display:flex;align-items:center;gap:10px}
+.tg span{flex:1}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.btn{background:var(--bg3);border:1px solid #343848;border-radius:10px;padding:8px 12px;color:var(--fg)}
+.btn.pri{background:var(--acc2);border-color:var(--acc2)}
+.btn.danger{color:var(--red)}
+.btn:disabled{opacity:.5}
+.chip{font-size:11px;background:var(--bg3);color:var(--dim);border-radius:20px;padding:1px 8px;white-space:nowrap}
+.chip.a{color:var(--acc)}
+.empty{color:var(--dim);text-align:center;padding:40px 24px}
+.back{position:fixed;inset:0;background:#0009;z-index:20;display:flex;align-items:flex-end}
+.sheet{background:var(--bg2);width:100%;max-height:88dvh;border-radius:18px 18px 0 0;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+.sheet.full{height:92dvh}
+.sh-h{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 6px}
+.sh-h .x{background:none;border:0;font-size:18px;color:var(--dim);padding:4px 8px}
+.sh-b{overflow-y:auto;padding:6px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.screen{position:fixed;inset:0;background:var(--bg);z-index:10;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+.sc-b{flex:1;overflow-y:auto;min-height:0;padding-bottom:16px}
+.screen .card{margin:0 12px 10px}
+.msgs{flex:1;overflow-y:auto;min-height:0;padding:8px 10px;display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain}
+.msg{max-width:94%;border-radius:16px;padding:9px 12px;position:relative;word-wrap:break-word;overflow-wrap:anywhere}
+.msg.bot{background:var(--bg2);align-self:flex-start;border-bottom-left-radius:4px}
+.msg.me{background:#2d2a52;align-self:flex-end;border-bottom-right-radius:4px}
+.msg .who{font-size:12px;color:var(--acc);font-weight:600;margin-bottom:2px;display:flex;align-items:center;gap:6px}
+.msg .who img{width:18px;height:18px;border-radius:50%;object-fit:cover}
+.msg .txt i{color:#b9bdd0}
+.msg .txt .q{color:var(--q)}
+.msg .acts{display:flex;gap:4px;margin-top:4px;opacity:.55}
+.msg .acts button{background:none;border:0;color:var(--dim);font-size:14px;padding:2px 8px}
+.msg .rg{display:none}
+.msg:last-child .rg{display:inline-block}
+.msg.stream .acts{display:none}
+.more{align-self:center}
+.comp{display:flex;gap:8px;padding:8px 10px;background:var(--bg2);padding-bottom:calc(8px + env(safe-area-inset-bottom));align-items:flex-end}
+.comp textarea{max-height:140px;min-height:42px;border-radius:20px;padding:10px 14px}
+.comp .send{width:44px;height:44px;border-radius:50%;border:0;background:var(--acc2);font-size:18px;flex:none}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#000d;color:#fff;padding:9px 16px;border-radius:20px;z-index:50;max-width:90%;text-align:center;font-size:14px}
+.ck{display:flex;gap:10px;align-items:flex-start;background:var(--bg3);border-radius:10px;padding:8px 10px}
+.ck div{flex:1;font-size:13px}
+.entry{background:var(--bg2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:3px}
+.entry .t{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.entry p{margin:0;font-size:13px;color:#b9bdd0}
+.dots{opacity:.6}
+</style>
+</head>
+<body>
+<div id="main"></div>
+<nav id="nav"></nav>
+<script>
+'use strict';
+/* ================= util ================= */
+function h(tag,a,...kids){const e=document.createElement(tag);let val;
+  for(const k in a||{}){const v=a[k];if(v==null||v===false)continue;
+    if(k==='class')e.className=v;else if(k==='style')e.style.cssText=v;else if(k==='value')val=v;
+    else if(k==='checked')e.checked=true;else if(k.slice(0,2)==='on')e.addEventListener(k.slice(2),v);
+    else e.setAttribute(k,v===true?'':v)}
+  for(const c of kids.flat(9))if(c!=null&&c!==false)e.append(c.nodeType?c:String(c));
+  if(val!==undefined)e.value=val;return e}
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,10));
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function md(s){return esc(s).replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>').replace(/\*([^*\n]+)\*/g,'<i>$1</i>')
+  .replace(/("[^"\n]+"|“[^”\n]+”|«[^»\n]+»)/g,'<span class="q">$1</span>').replace(/\n/g,'<br>')}
+function toast(m,ms=2800){const t=h('div',{class:'toast'},m);document.body.append(t);setTimeout(()=>t.remove(),ms)}
+function relTime(ts){const d=(Date.now()-ts)/1000;if(d<60)return 'ahora';if(d<3600)return Math.floor(d/60)+' min';if(d<86400)return Math.floor(d/3600)+' h';return new Date(ts).toLocaleDateString('es-CL',{day:'numeric',month:'short'})}
+function download(name,text,type='application/json'){const a=h('a',{href:URL.createObjectURL(new Blob([text],{type})),download:name});document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
+function pickFile(accept,multiple){return new Promise(res=>{const i=h('input',{type:'file',accept,multiple:!!multiple,style:'display:none'});i.onchange=()=>{res([...i.files]);i.remove()};document.body.append(i);i.click()})}
+const toKeys=k=>(Array.isArray(k)?k:String(k||'').split(',')).map(s=>String(s).trim()).filter(Boolean);
+function parseJSON(t){t=String(t).replace(/```json|```/gi,'');const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a<0||b<a)return null;try{return JSON.parse(t.slice(a,b+1))}catch{return null}}
+const field=(label,...c)=>h('label',{class:'fld'},h('span',{},label),...c);
+const btn=(t,fn,cls='')=>h('button',{class:'btn '+cls,onclick:fn},t);
+const sel=(opts,val,fn)=>h('select',{value:val,onchange:e=>fn(e.target.value)},opts.map(([v,l])=>h('option',{value:v},l)));
+const toggle=(label,val,fn)=>h('label',{class:'tg'},h('span',{},label),h('input',{type:'checkbox',checked:val,onchange:e=>fn(e.target.checked)}));
+const empty=t=>h('div',{class:'empty'},t);
+const av=o=>h('div',{class:'av'},o&&o.avatar?h('img',{src:o.avatar,loading:'lazy'}):(o&&o.name?o.name[0].toUpperCase():'?'));
+const sub=(t,c)=>(t||'').replace(/{{\s*char\s*}}/gi,c.char).replace(/{{\s*user\s*}}/gi,c.user);
+
+/* ================= base de datos ================= */
+const DB={db:null,
+  open(){return new Promise((res,rej)=>{const r=indexedDB.open('taberna',1);
+    r.onupgradeneeded=()=>{const d=r.result;for(const s of ['characters','personas','lorebooks','chats','presets'])d.createObjectStore(s,{keyPath:'id'});
+      d.createObjectStore('kv',{keyPath:'k'});const m=d.createObjectStore('messages',{keyPath:'id',autoIncrement:true});
+      m.createIndex('chat','chatId');m.createIndex('chatId_id',['chatId','id'])};
+    r.onsuccess=()=>{this.db=r.result;res()};r.onerror=()=>rej(r.error)})},
+  st(s,m='readonly'){return this.db.transaction(s,m).objectStore(s)},
+  rq(r){return new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})},
+  all(s){return this.rq(this.st(s).getAll())},
+  get(s,k){return this.rq(this.st(s).get(k))},
+  put(s,v){return this.rq(this.st(s,'readwrite').put(v))},
+  del(s,k){return this.rq(this.st(s,'readwrite').delete(k))},
+  clear(s){return this.rq(this.st(s,'readwrite').clear())},
+  /* mensajes ascendentes de un chat, leídos desde el final (solo lo necesario) */
+  msgs(chatId,{afterId=0,beforeId=Infinity,limit=Infinity,maxChars=Infinity}={}){
+    return new Promise((res,rej)=>{const out=[];let chars=0;
+      const r=this.st('messages').index('chatId_id').openCursor(IDBKeyRange.bound([chatId,afterId+1],[chatId,beforeId],false,true),'prev');
+      r.onsuccess=()=>{const c=r.result;if(!c){res(out.reverse());return}
+        const m=c.value;if(out.length&&chars+m.content.length>maxChars){res(out.reverse());return}
+        out.push(m);chars+=m.content.length;if(out.length>=limit){res(out.reverse());return}c.continue()};
+      r.onerror=()=>rej(r.error)})},
+  delChat(chatId){return new Promise((res,rej)=>{const r=this.st('messages','readwrite').index('chat').openCursor(IDBKeyRange.only(chatId));
+    r.onsuccess=()=>{const c=r.result;if(!c){res();return}c.delete();c.continue()};r.onerror=()=>rej(r.error)})}
+};
+
+/* ================= estado ================= */
+const KS={chars:'characters',personas:'personas',lores:'lorebooks',presets:'presets',chats:'chats'};
+const S={settings:null,chars:new Map(),personas:new Map(),lores:new Map(),presets:new Map(),chats:new Map(),tab:'chats'};
+const put=(k,o)=>{S[k].set(o.id,o);return DB.put(KS[k],o)};
+const rm=(k,id)=>{S[k].delete(id);return DB.del(KS[k],id)};
+const saveSettings=()=>DB.put('kv',{k:'settings',v:S.settings});
+const DEF={profiles:[],activeProfile:null,auxProfile:'',dirOn:false,dirProfile:'',dirCtxTokens:30000,personaId:null,presetId:null,tone:'',ctxTokens:6000,loreTokens:1200,scanDepth:6,pageSize:30,autoLore:true,autoLoreEvery:4,summarize:true};
+const DEFURL={openai:'https://openrouter.ai/api/v1',anthropic:'https://api.anthropic.com',gemini:'https://generativelanguage.googleapis.com'};
+const CPT=3.5; /* caracteres por token (aprox.) */
+const SEED_PRESETS=[
+ {name:'Rol clásico',temperature:0.9,maxTokens:600,instructions:'Eres {{char}} en un roleplay con {{user}}. Escribe solo la siguiente respuesta de {{char}}; nunca hables, actúes ni decidas por {{user}}. Sé coherente con la ficha, el lore y lo ocurrido. Usa *asteriscos* para acciones y "comillas" para el diálogo. Toma iniciativa y haz avanzar la escena; no repitas frases anteriores. No rompas el personaje ni agregues notas fuera de la ficción.'},
+ {name:'Narrador',temperature:0.85,maxTokens:900,instructions:'Actúa como narrador de una historia interactiva en la que {{user}} es el protagonista. Describe el entorno, los hechos y a los personajes (incluido {{char}}) en tercera persona, con detalle sensorial y ritmo. Nunca decidas las acciones ni los pensamientos de {{user}}. Termina dejando una apertura natural para que {{user}} responda.'},
+ {name:'Breve',temperature:0.8,maxTokens:300,instructions:'Eres {{char}}. Responde en 1 a 3 párrafos cortos, directo y en personaje. No hables ni actúes por {{user}}. Acciones en *asteriscos*, diálogo en "comillas".'}];
+
+async function loadAll(){
+  for(const k in KS)S[k]=new Map((await DB.all(KS[k])).map(x=>[x.id,x]));
+  const kv=await DB.get('kv','settings');S.settings={...DEF,...(kv&&kv.v||{})};
+  if(!S.presets.size)for(const p of SEED_PRESETS)await put('presets',{id:uid(),...p});
+  if(!S.personas.size)await put('personas',{id:uid(),name:'Tú',description:'',avatar:''});
+  if(!S.presets.has(S.settings.presetId))S.settings.presetId=[...S.presets.keys()][0];
+  if(!S.personas.has(S.settings.personaId))S.settings.personaId=[...S.personas.keys()][0];
+  await saveSettings()}
+
+/* ================= capas (botón atrás de Android) ================= */
+const layers=[],backWait=[];
+function pushLayer(L){layers.push(L);history.pushState({d:layers.length},'')}
+function closeTop(){return new Promise(r=>{backWait.push(r);history.back()})}
+addEventListener('popstate',()=>{const L=layers.pop();if(L)L.close();const r=backWait.shift();if(r)r()});
+function sheet(title,body,{full=false}={}){
+  const back=h('div',{class:'back',onclick:e=>{if(e.target===back)closeTop()}});
+  const b=h('div',{class:'sh-b'},body);
+  back.append(h('div',{class:'sheet'+(full?' full':'')},h('div',{class:'sh-h'},h('b',{},title),h('button',{class:'x',onclick:closeTop},'✕')),b));
+  document.body.append(back);const L={body:b,close(){back.remove()}};pushLayer(L);return L}
+function screen(title,{actions=[]}={}){
+  const body=h('div',{class:'sc-b'});const ttl=h('div',{class:'ttl'},title);
+  const bar=h('div',{class:'bar'},h('button',{class:'ic',onclick:closeTop},'‹'),ttl,...actions);
+  const el=h('div',{class:'screen'},bar,body);document.body.append(el);
+  const L={el,body,bar,ttl,close(){el.remove();if(L.onClose)L.onClose()}};pushLayer(L);return L}
+
+/* ================= LLM ================= */
+const base=p=>(p.baseUrl||DEFURL[p.kind]).replace(/\/+$/,'');
+const mainProfile=()=>S.settings.profiles.find(p=>p.id===S.settings.activeProfile)||S.settings.profiles[0];
+const dirProfile=()=>S.settings.profiles.find(p=>p.id===S.settings.dirProfile)||null;
+const auxProfile=()=>S.settings.profiles.find(p=>p.id===S.settings.auxProfile)||(S.settings.dirOn&&dirProfile())||mainProfile();
+function mergeRoles(msgs,first='user'){const out=[];for(const m of msgs){const r=m.role;if(out.length&&out[out.length-1].role===r)out[out.length-1].content+='\n\n'+m.content;else out.push({role:r,content:m.content})}
+  if(out.length&&out[0].role!==first)out.unshift({role:first,content:'(Inicio de la conversación)'});return out}
+async function readSSE(resp,onData){const rd=resp.body.getReader(),dec=new TextDecoder();let buf='';
+  for(;;){const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});
+    for(;;){const m=/\r?\n\r?\n/.exec(buf);if(!m)break;const ev=buf.slice(0,m.index);buf=buf.slice(m.index+m[0].length);
+      for(const line of ev.split(/\r?\n/))if(line.startsWith('data:')){const d=line.slice(5).trim();if(d&&d!=='[DONE]')onData(d)}}}}
+async function llm(p,{system,messages,temperature=0.8,maxTokens=800,signal,onToken}){
+  if(!p)throw new Error('Configura una conexión en Ajustes');
+  if(p.noSystem&&p.kind!=='anthropic'&&system){messages=[...messages];
+    if(messages[0]&&messages[0].role==='user')messages[0]={role:'user',content:system+'\n\n---\n\n'+messages[0].content};else messages.unshift({role:'user',content:system});system=''}
+  const hd={'Content-Type':'application/json'};let url,body,pick;
+  if(p.kind==='anthropic'){
+    url=base(p)+'/v1/messages';hd['x-api-key']=p.key;hd['anthropic-version']='2023-06-01';hd['anthropic-dangerous-direct-browser-access']='true';
+    body={model:p.model,system,messages:mergeRoles(messages),max_tokens:maxTokens,temperature:Math.min(temperature,1),stream:true};
+    pick=j=>j.type==='content_block_delta'&&j.delta&&j.delta.text||''}
+  else if(p.kind==='gemini'){
+    url=`${base(p)}/v1beta/models/${p.model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(p.key)}`;
+    body={...(system?{systemInstruction:{parts:[{text:system}]}}:{}),contents:mergeRoles(messages.map(m=>({role:m.role==='assistant'?'model':'user',content:m.content})),'user').map(m=>({role:m.role,parts:[{text:m.content}]})),
+      generationConfig:{temperature,maxOutputTokens:maxTokens},
+      safetySettings:['HARASSMENT','HATE_SPEECH','SEXUALLY_EXPLICIT','DANGEROUS_CONTENT'].map(c=>({category:'HARM_CATEGORY_'+c,threshold:'BLOCK_NONE'}))};
+    pick=j=>((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).filter(x=>!x.thought).map(x=>x.text||'').join('')}
+  else{
+    url=base(p)+'/chat/completions';if(p.key)hd.Authorization='Bearer '+p.key;
+    body={model:p.model,messages:[...(system?[{role:'system',content:system}]:[]),...messages],temperature,max_tokens:maxTokens,stream:true};
+    pick=j=>j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content||''}
+  const r=await fetch(url,{method:'POST',headers:hd,body:JSON.stringify(body),signal});
+  if(!r.ok){let t='';try{t=await r.text()}catch{}throw new Error(r.status+': '+t.slice(0,240))}
+  let out='';await readSSE(r,d=>{let j;try{j=JSON.parse(d)}catch{return}const t=pick(j);if(t){out+=t;if(onToken)onToken(out)}});
+  if(!out.trim())throw new Error('Respuesta vacía del modelo');return out}
+async function fetchModels(p){const b=base(p);let url,hd={};
+  if(p.kind==='gemini')url=`${b}/v1beta/models?pageSize=200&key=${encodeURIComponent(p.key)}`;
+  else if(p.kind==='anthropic'){url=b+'/v1/models?limit=100';hd={'x-api-key':p.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}}
+  else{url=b+'/models';if(p.key)hd.Authorization='Bearer '+p.key}
+  const r=await fetch(url,{headers:hd});if(!r.ok)throw new Error(r.status+'');const j=await r.json();
+  return(j.data||j.models||[]).map(m=>String(m.id||m.name||'').replace(/^models\//,'')).filter(Boolean)}
+
+/* ================= prompt ================= */
+function ctxOf(chat){const ch=S.chars.get(chat.charId),per=S.personas.get(chat.personaId)||S.personas.get(S.settings.personaId)||{name:'Tú',description:''};return{ch,per,char:ch.name,user:per.name}}
+function matchKey(k,hay){if(/^\/.+\/[a-z]*$/.test(k)){try{const i=k.lastIndexOf('/');return new RegExp(k.slice(1,i),k.slice(i+1)||'i').test(hay)}catch{return false}}return hay.includes(k.toLowerCase())}
+function loreBooks(ch){const bs=[];const own=S.lores.get(ch.loreId);if(own)bs.push(own);
+  for(const id of ch.extraLore||[]){const b=S.lores.get(id);if(b&&!bs.includes(b))bs.push(b)}
+  for(const b of S.lores.values())if(b.scope==='global'&&b.active&&!bs.includes(b))bs.push(b);return bs}
+function activeLore(ch,scan,mult=1){const hay=scan.toLowerCase();const hits=[];
+  for(const b of loreBooks(ch))for(const e of b.entries){if(e.enabled===false||!e.content)continue;if(e.constant||e.keys.some(k=>matchKey(k,hay)))hits.push(e)}
+  hits.sort((a,b)=>(b.order||0)-(a.order||0));const out=[];let n=0,lim=S.settings.loreTokens*CPT*mult;
+  for(const e of hits){if(n+e.content.length>lim)break;out.push(e);n+=e.content.length}return out}
+const DIRECTOR_SYS=`Eres el director de un roleplay con dos modelos. Tú ves toda la historia, la ficha y el lore; otro modelo, con memoria muy corta, escribirá la próxima respuesta de {{char}} usando SOLO tus notas, la ficha y los últimos mensajes. Tu trabajo es razonar y planificar, NO escribir la respuesta. Devuelve notas breves (máximo 300 palabras), en el idioma de la conversación, con estas secciones exactas:
+SITUACIÓN: dónde y cuándo están, quién está presente, el estado emocional y físico de cada uno, lo que acaba de pasar y qué espera {{user}}.
+RECUERDA: viñetas con los hechos del historial, del resumen o del lore que importan AHORA (nombres, promesas, objetos, relaciones, reglas del mundo, detalles que podrían contradecirse). Solo lo relevante para esta respuesta.
+PLAN: 2 a 4 viñetas con lo que {{char}} debe hacer, decir o revelar en esta respuesta, coherente con su personalidad, avanzando la escena sin decidir nada por {{user}}.
+ESTILO: tono, ritmo y largo adecuados, según la guía de estilo.
+EVITAR: errores o repeticiones que el escritor debe esquivar (frases ya usadas, contradicciones, clichés).
+No escribas diálogo ni la respuesta final.`;
+async function makeBrief(chat,upToId,signal){
+  const p=dirProfile();const{system,messages}=await buildPrompt(chat,upToId,{role:'director'});
+  const raw=await llm(p,{system,messages,temperature:0.4,maxTokens:1200,signal});
+  return raw.trim().slice(0,2500)}
+async function buildPrompt(chat,upToId=Infinity,{role='single',brief=''}={}){
+  const c=ctxOf(chat),{ch,per}=c;const st=S.settings;
+  const preset=S.presets.get(chat.presetId)||S.presets.get(st.presetId)||[...S.presets.values()][0];
+  const dir=role==='director',wr=role==='writer';
+  const budget=(dir?st.dirCtxTokens:st.ctxTokens)*CPT;
+  let hist=await DB.msgs(chat.id,{afterId:chat.summaryUpTo||0,beforeId:upToId,maxChars:budget});
+  const scan=hist.slice(-st.scanDepth).map(m=>m.content).join('\n');
+  const lore=wr?[]:activeLore(ch,scan+'\n'+(ch.name||''),dir?2:1);
+  const tone=(chat.tone||st.tone||'').trim();const P=[];
+  if(dir)P.push(sub(DIRECTOR_SYS,c));
+  P.push((dir?'# Guía de estilo que seguirá el escritor\n':'')+sub(preset.instructions,c));
+  if(tone)P.push('# Tono y estilo\n'+sub(tone,c));
+  if(ch.system_prompt)P.push(sub(ch.system_prompt,c));
+  P.push('# Personaje: '+ch.name+'\n'+[ch.description,ch.personality&&'Personalidad: '+ch.personality,ch.scenario&&'Escenario: '+ch.scenario].filter(Boolean).map(t=>sub(t,c)).join('\n'));
+  if(per.description)P.push('# Usuario: '+per.name+'\n'+sub(per.description,c));
+  if(ch.mes_example&&!dir)P.push('# Ejemplos de diálogo\n'+sub(ch.mes_example,c));
+  if(lore.length)P.push('# Información del mundo (lore relevante)\n'+lore.map(e=>(e.name?'['+e.name+'] ':'')+sub(e.content,c)).join('\n'));
+  if(chat.summary&&!wr)P.push('# Resumen de lo ocurrido antes\n'+chat.summary);
+  if(wr&&brief)P.push('# Notas del director (privadas: guían tu respuesta; no las menciones ni las cites)\n'+brief);
+  const system=P.join('\n\n');
+  let total=hist.reduce((n,m)=>n+m.content.length,0);const room=Math.max(budget-system.length,1500);
+  while(hist.length>2&&total>room){total-=hist[0].content.length;hist.shift()}
+  const turns=hist.map(m=>({role:m.role,content:sub(m.content,c)}));
+  if(dir)return{system,preset,messages:[{role:'user',content:'# Conversación reciente\n'+turns.map(m=>(m.role==='user'?c.user:c.char)+': '+m.content).join('\n\n')+'\n\n# Tarea\nEscribe ahora las notas para la siguiente respuesta de '+c.char+'.'}]};
+  return{system,messages:turns,preset}}
+
+/* ================= lorebook: auto-actualización, generación, resumen ================= */
+async function ensureCharLore(ch){let lb=S.lores.get(ch.loreId);if(lb)return lb;
+  lb={id:uid(),name:ch.name+' (lore)',scope:'char',ownerId:ch.id,autoUpdate:true,active:true,entries:[],log:[]};
+  ch.loreId=lb.id;await put('lores',lb);await put('chars',ch);return lb}
+const LORE_SYS=n=>`Eres el archivista del lorebook del personaje "${n}" en un roleplay. Lees fragmentos recientes de la conversación y mantienes el lorebook. Registra solo hechos NUEVOS, DURADEROS y CONCRETOS: personas, lugares, objetos, relaciones, eventos importantes, reglas del mundo, cambios relevantes en el estado del personaje o del usuario. Ignora diálogo trivial, emociones pasajeras y cualquier cosa que no se haya establecido realmente en la conversación. Si un hecho ya está en una entrada existente, actualízala fusionando el dato (devuelve el texto completo nuevo) en vez de duplicar. Cada entrada: 1 a 4 frases, tercera persona, en el mismo idioma de la conversación; claves = 2 a 5 palabras que, al aparecer en un mensaje, justifiquen recordar la entrada. Responde SOLO con JSON: {"ops":[{"op":"add","name":"...","keys":["..."],"content":"..."},{"op":"update","id":"ID_EXISTENTE","keys":["..."],"content":"..."}]}. Máximo 5 operaciones. Si no hay nada que registrar: {"ops":[]}.`;
+const loreLock=new Set();
+async function updateLore(chat,force){
+  const c=ctxOf(chat);const lb=await ensureCharLore(c.ch);
+  if(loreLock.has(lb.id))return;loreLock.add(lb.id);
+  try{
+    const msgs=await DB.msgs(chat.id,{afterId:chat.lastLoreId||0,limit:24,maxChars:14000});
+    if(!msgs.length){if(force)toast('No hay mensajes nuevos que analizar');return}
+    const existing=lb.entries.slice(-80).map(e=>`[${e.id}] ${e.name||''} | claves: ${e.keys.join(', ')} | ${e.content.slice(0,220)}`).join('\n')||'(vacío)';
+    const convo=msgs.map(m=>`${m.role==='user'?c.user:c.char}: ${sub(m.content,c)}`).join('\n\n');
+    const raw=await llm(auxProfile(),{system:LORE_SYS(c.char),messages:[{role:'user',content:`Entradas existentes:\n${existing}\n\nConversación reciente:\n${convo}`}],temperature:0.3,maxTokens:1400});
+    const j=parseJSON(raw);if(!j)throw new Error('El modelo no devolvió JSON válido');
+    const changes=[];let a=0,u=0;
+    for(const o of (j.ops||[]).slice(0,6)){
+      if(o.op==='add'&&o.content){const e={id:uid(),name:String(o.name||'').slice(0,80),keys:toKeys(o.keys),content:String(o.content),constant:false,enabled:true,order:100,auto:true};lb.entries.push(e);changes.push({op:'add',id:e.id});a++}
+      else if(o.op==='update'&&o.content){const e=lb.entries.find(x=>x.id===o.id);if(e){changes.push({op:'update',id:e.id,prev:{...e,keys:[...e.keys]}});e.content=String(o.content);if(o.keys&&o.keys.length)e.keys=[...new Set([...e.keys,...toKeys(o.keys)])];u++}}}
+    if(changes.length)lb.log=[...(lb.log||[]),{ts:Date.now(),chatId:chat.id,changes}].slice(-10);
+    chat.lastLoreId=msgs[msgs.length-1].id;chat.loreCount=0;await put('chats',chat);await put('lores',lb);
+    if(changes.length)toast(`Lore: +${a} nuevas, ${u} actualizadas`);else if(force)toast('Nada nuevo que registrar');
+    if(S.onLore)S.onLore(lb.id);
+  }catch(e){toast('Lore: '+e.message,4000)}finally{loreLock.delete(lb.id)}}
+async function afterTurn(chat){
+  chat.loreCount=(chat.loreCount||0)+1;await put('chats',chat);
+  const lb=S.lores.get(S.chars.get(chat.charId).loreId);
+  if(S.settings.autoLore&&(!lb||lb.autoUpdate!==false)&&chat.loreCount>=S.settings.autoLoreEvery)updateLore(chat);
+  maybeSummarize(chat)}
+const sumLock=new Set();
+async function maybeSummarize(chat,force){
+  if(!S.settings.summarize&&!force)return;if(sumLock.has(chat.id))return;sumLock.add(chat.id);
+  try{
+    const budget=(S.settings.dirOn&&dirProfile()?S.settings.dirCtxTokens:S.settings.ctxTokens)*CPT;
+    const msgs=await DB.msgs(chat.id,{afterId:chat.summaryUpTo||0,limit:3000});
+    const total=msgs.reduce((n,m)=>n+m.content.length,0);
+    if(!force&&total<budget*1.3)return;
+    let cut;if(force)cut=msgs.length-6;else{let keep=0;cut=msgs.length;while(cut>0&&keep<budget*0.6){cut--;keep+=msgs[cut].content.length}}
+    if(cut<4){if(force)toast('Aún hay pocos mensajes para resumir');return}
+    const old=msgs.slice(0,cut);const c=ctxOf(chat);
+    let text=old.map(m=>`${m.role==='user'?c.user:c.char}: ${sub(m.content,c)}`).join('\n\n');if(text.length>30000)text=text.slice(-30000);
+    const raw=await llm(auxProfile(),{system:'Eres un resumidor de historias de roleplay. Actualizas un resumen acumulado integrando los nuevos mensajes. Conserva hechos, nombres, relaciones, promesas, decisiones, lugares y el estado actual de la situación. Tercera persona, tiempo pasado, mismo idioma de la conversación, máximo 350 palabras, sin florituras ni comentarios. Responde solo con el resumen.',
+      messages:[{role:'user',content:`Resumen actual:\n${chat.summary||'(ninguno)'}\n\nMensajes nuevos a integrar:\n${text}`}],temperature:0.3,maxTokens:900});
+    chat.summary=raw.trim();chat.summaryUpTo=old[old.length-1].id;await put('chats',chat);if(force)toast('Resumen actualizado')
+  }catch(e){toast('Resumen: '+e.message,4000)}finally{sumLock.delete(chat.id)}}
+async function genEntries(lb,{desc,count}){
+  const ch=lb.ownerId?S.chars.get(lb.ownerId):null;
+  const info=ch?`Ficha de ${ch.name}:\nDescripción: ${ch.description}\nPersonalidad: ${ch.personality}\nEscenario: ${ch.scenario}\nPrimer mensaje: ${ch.first_mes}`.slice(0,5000):'';
+  const names=lb.entries.map(e=>e.name||e.keys[0]).filter(Boolean).slice(0,60).join(', ');
+  const user=[info,ch?'':'Lorebook: '+lb.name,desc?'Indicaciones del usuario: '+desc:(ch?'Sin indicaciones: deduce de la ficha las entradas más útiles (personas, lugares, objetos, trasfondo, reglas del mundo, relaciones).':''),names?'Ya existen: '+names+'. No las repitas.':'','Genera '+count+' entradas.'].filter(Boolean).join('\n\n');
+  const raw=await llm(auxProfile(),{system:'Eres un diseñador de worldbuilding para roleplay. Creas entradas de lorebook útiles, concretas y coherentes con lo que se te da; no inventes contradicciones. Cada entrada: nombre corto, 2 a 5 claves (palabras o frases cortas, en minúsculas, que una conversación podría mencionar) y contenido de 1 a 4 frases en tercera persona, en el idioma de las indicaciones. Responde SOLO con JSON: {"entries":[{"name":"...","keys":["..."],"content":"..."}]}',
+    messages:[{role:'user',content:user}],temperature:0.8,maxTokens:3500});
+  const j=parseJSON(raw);if(!j||!Array.isArray(j.entries))throw new Error('El modelo no devolvió JSON válido');
+  return j.entries.filter(e=>e&&e.content).map(e=>({id:uid(),name:String(e.name||'').slice(0,80),keys:toKeys(e.keys),content:String(e.content),constant:false,enabled:true,order:100}))}
+
+/* ================= importar / exportar ================= */
+function pngText(buf){const u=new Uint8Array(buf),v=new DataView(buf);const sig=[137,80,78,71,13,10,26,10];for(let i=0;i<8;i++)if(u[i]!==sig[i])return null;
+  const L=new TextDecoder('latin1'),U=new TextDecoder();let p=8;const out={};
+  while(p+8<=u.length){const len=v.getUint32(p),type=String.fromCharCode(u[p+4],u[p+5],u[p+6],u[p+7]),s=p+8,e=s+len;
+    if(type==='tEXt'||type==='iTXt'){let z=s;while(z<e&&u[z]!==0)z++;const key=L.decode(u.subarray(s,z));let tx;
+      if(type==='tEXt')tx=L.decode(u.subarray(z+1,e));else{let q=z+3,n=0;while(n<2&&q<e){if(u[q]===0)n++;q++}tx=U.decode(u.subarray(q,e))}
+      out[key]=tx}
+    if(type==='IEND')break;p=e+4}
+  return out}
+const b64utf8=s=>new TextDecoder().decode(Uint8Array.from(atob(s.trim()),c=>c.charCodeAt(0)));
+function resizeImg(src,max=320){return new Promise((res,rej)=>{const url=src instanceof Blob?URL.createObjectURL(src):src;const img=new Image();
+  img.onload=()=>{const k=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);if(src instanceof Blob)URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',0.82))};img.onerror=()=>rej(new Error('Imagen no válida'));img.src=url})}
+function normEntries(src){const arr=Array.isArray(src)?src:Object.values(src||{});
+  return arr.map(e=>({id:uid(),name:String(e.name||e.comment||''),keys:toKeys(e.keys||e.key),content:String(e.content||''),
+    enabled:e.enabled!==undefined?!!e.enabled:!e.disable,constant:!!e.constant,order:Number(e.insertion_order??e.order??100)||100})).filter(e=>e.content)}
+function exportLore(lb){return JSON.stringify({name:lb.name,entries:lb.entries.map(e=>({name:e.name,comment:e.name,keys:e.keys,content:e.content,enabled:e.enabled!==false,constant:!!e.constant,insertion_order:e.order||100,extensions:{}}))},null,1)}
+async function importCard(file){
+  let j,avatar='';
+  if(/\.png$/i.test(file.name)||file.type==='image/png'){
+    const t=pngText(await file.arrayBuffer());const raw=t&&(t.ccv3||t.chara);if(!raw)throw new Error('El PNG no contiene datos de personaje');
+    j=JSON.parse(b64utf8(raw));avatar=await resizeImg(file)}
+  else j=JSON.parse(await file.text());
+  const d=j.data||j;
+  const ch={id:uid(),name:d.name||file.name.replace(/\.\w+$/,''),description:d.description||'',personality:d.personality||'',scenario:d.scenario||'',first_mes:d.first_mes||'',
+    alternate_greetings:d.alternate_greetings||[],mes_example:d.mes_example||'',system_prompt:d.system_prompt||'',avatar,extraLore:[],loreId:null,created:Date.now()};
+  await put('chars',ch);const lb=await ensureCharLore(ch);
+  if(d.character_book&&d.character_book.entries){lb.entries=normEntries(d.character_book.entries);await put('lores',lb)}
+  return ch}
+function exportChar(ch){const lb=S.lores.get(ch.loreId);return JSON.stringify({spec:'chara_card_v2',spec_version:'2.0',data:{name:ch.name,description:ch.description,personality:ch.personality,scenario:ch.scenario,first_mes:ch.first_mes,mes_example:ch.mes_example,system_prompt:ch.system_prompt,alternate_greetings:ch.alternate_greetings||[],tags:[],creator_notes:'',post_history_instructions:'',creator:'',character_version:'',extensions:{},
+  character_book:lb?JSON.parse(exportLore(lb)):undefined}},null,1)}
+async function exportAll(){const d={v:1,ts:Date.now()};for(const s of ['characters','personas','lorebooks','chats','presets','kv','messages'])d[s]=await DB.all(s);
+  download('taberna-respaldo-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(d))}
+async function importAll(file){const d=JSON.parse(await file.text());if(!d.characters||!d.messages)throw new Error('Archivo de respaldo no válido');
+  for(const s of ['characters','personas','lorebooks','chats','presets','kv','messages']){await DB.clear(s);for(const o of d[s]||[])await DB.put(s,o)}}
+
+/* ================= pestañas ================= */
+const TABS=[['chats','Chats','💬'],['chars','Personajes','🎭'],['lore','Lorebooks','📖'],['personas','Personas','👤'],['settings','Ajustes','⚙️']];
+const R={};const main=document.getElementById('main'),nav=document.getElementById('nav');
+function go(t){S.tab=t;[...nav.children].forEach((b,i)=>b.classList.toggle('on',TABS[i][0]===t));R[t]();main.scrollTop=0}
+const header=(t,...a)=>h('div',{class:'bar'},h('div',{class:'ttl'},t),...a);
+
+R.chats=()=>{const cs=[...S.chats.values()].sort((a,b)=>b.updated-a.updated);
+  main.replaceChildren(header('Chats'),
+    !mainProfile()?h('div',{class:'card'},h('div',{},'Aún no hay ninguna conexión de API.'),btn('Configurar ahora',()=>go('settings'),'pri')):null,
+    h('div',{class:'list'},cs.length?cs.map(c=>{const ch=S.chars.get(c.charId);return h('div',{class:'row',onclick:()=>openChat(c.id)},av(ch),h('div',{class:'grow'},h('b',{},c.title),h('small',{},ch.name)),h('small',{},relTime(c.updated)))}):empty('Sin chats todavía. En Personajes puedes importar una card o crear uno.')))};
+
+R.chars=()=>{let q='';const list=h('div',{class:'list'});
+  const draw=()=>{const cs=[...S.chars.values()].filter(c=>c.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
+    list.replaceChildren(...(cs.length?cs.map(c=>h('div',{class:'row',onclick:()=>charMenu(c)},av(c),h('div',{class:'grow'},h('b',{},c.name),h('small',{},(c.description||'').replace(/\s+/g,' ').slice(0,70))))):[empty('Sin personajes. Importa una card (PNG/JSON) o crea uno.')]))};
+  main.replaceChildren(header('Personajes',btn('Importar',doImport),btn('＋',()=>editChar(null),'pri')),
+    h('div',{style:'padding:0 12px 8px'},h('input',{placeholder:'Buscar…',oninput:e=>{q=e.target.value.toLowerCase();draw()}})),list);draw()};
+async function doImport(){const fs=await pickFile('.png,.json,application/json,image/png',true);let n=0;
+  for(const f of fs){try{await importCard(f);n++}catch(e){toast(f.name+': '+e.message,4000)}}
+  if(n){toast(n+' personaje(s) importado(s)');R.chars()}}
+function charMenu(ch){const last=[...S.chats.values()].filter(c=>c.charId===ch.id).sort((a,b)=>b.updated-a.updated)[0];
+  const L=sheet(ch.name,h('div',{class:'btns',style:'flex-direction:column'},
+    btn('💬 Nuevo chat',async()=>{await closeTop();startChat(ch)},'pri'),
+    last?btn('↪ Continuar último chat',async()=>{await closeTop();openChat(last.id)}):null,
+    btn('✎ Editar',async()=>{await closeTop();editChar(ch)}),
+    btn('📖 Lorebook del personaje',async()=>{const lb=await ensureCharLore(ch);await closeTop();openLore(lb.id)}),
+    btn('⬇ Exportar card (JSON)',()=>download(ch.name+'.json',exportChar(ch))),
+    btn('🗑 Eliminar',async()=>{if(!confirm('¿Eliminar a '+ch.name+', sus chats y su lorebook?'))return;await closeTop();await deleteChar(ch)},'danger')))}
+async function deleteChar(ch){for(const c of [...S.chats.values()])if(c.charId===ch.id){await DB.delChat(c.id);await rm('chats',c.id)}
+  if(ch.loreId)await rm('lores',ch.loreId);await rm('chars',ch.id);R.chars()}
+async function startChat(ch){
+  const gs=[ch.first_mes,...(ch.alternate_greetings||[])].filter(Boolean);
+  if(gs.length>1){const L=sheet('Elige el saludo inicial',gs.map((g,i)=>h('div',{class:'ck',style:'cursor:pointer',onclick:async()=>{await closeTop();newChat(ch,g)}},h('div',{},(i?'Alt. '+i+': ':'')+g.slice(0,220)))));return}
+  newChat(ch,gs[0])}
+async function newChat(ch,greeting){const chat={id:uid(),charId:ch.id,personaId:null,title:ch.name+' · '+new Date().toLocaleDateString('es-CL',{day:'numeric',month:'short'}),created:Date.now(),updated:Date.now(),summary:'',summaryUpTo:0,tone:'',presetId:null,lastLoreId:0,loreCount:0};
+  await put('chats',chat);if(greeting)await DB.put('messages',{chatId:chat.id,role:'assistant',content:greeting,ts:Date.now()});openChat(chat.id)}
+
+function editChar(src){const isNew=!src;const ch=src?structuredClone(src):{id:uid(),name:'',description:'',personality:'',scenario:'',first_mes:'',alternate_greetings:[],mes_example:'',system_prompt:'',avatar:'',extraLore:[],loreId:null,created:Date.now()};
+  const f={};const F=(k,label,rows)=>{const el=rows?h('textarea',{rows}):h('input');el.value=Array.isArray(ch[k])?ch[k].join('\n---\n'):(ch[k]||'');f[k]=el;return field(label,el)};
+  const avEl=h('div',{class:'av',style:'width:72px;height:72px;cursor:pointer'});const paint=()=>avEl.replaceChildren(ch.avatar?h('img',{src:ch.avatar}):'📷');paint();
+  avEl.onclick=async()=>{const[fl]=await pickFile('image/*');if(fl){try{ch.avatar=await resizeImg(fl);paint()}catch(e){toast(e.message)}}};
+  const globals=[...S.lores.values()].filter(b=>b.scope==='global');const extra=new Set(ch.extraLore||[]);
+  const L=sheet(isNew?'Nuevo personaje':'Editar personaje',[
+    h('div',{style:'display:flex;gap:12px;align-items:center'},avEl,h('div',{style:'flex:1'},F('name','Nombre'))),
+    F('description','Descripción',5),F('personality','Personalidad',2),F('scenario','Escenario',2),F('first_mes','Primer mensaje',4),
+    F('alternate_greetings','Saludos alternativos (separados por una línea ---)',3),F('mes_example','Ejemplos de diálogo',3),F('system_prompt','Instrucciones propias del personaje (opcional)',2),
+    globals.length?h('div',{class:'fld'},h('span',{},'Lorebooks globales adicionales'),globals.map(b=>toggle(b.name,extra.has(b.id),v=>{v?extra.add(b.id):extra.delete(b.id)}))):null,
+    btn('Guardar',async()=>{const name=f.name.value.trim();if(!name)return toast('Falta el nombre');
+      for(const k in f){if(k==='alternate_greetings')ch[k]=f[k].value.split(/\n-{3,}\n/).map(s=>s.trim()).filter(Boolean);else ch[k]=f[k].value}
+      ch.name=name;ch.extraLore=[...extra];await put('chars',ch);if(isNew)await ensureCharLore(ch);await closeTop();R.chars()},'pri')],{full:true})}
+
+R.personas=()=>{const cur=S.settings.personaId;
+  main.replaceChildren(header('Personas',btn('＋',()=>editPersona(null),'pri')),
+    h('div',{class:'list'},[...S.personas.values()].map(p=>h('div',{class:'row',onclick:()=>editPersona(p)},av(p),h('div',{class:'grow'},h('b',{},p.name),h('small',{},(p.description||'Sin descripción').slice(0,70))),p.id===cur?h('span',{class:'chip a'},'activa'):null))),
+    h('div',{style:'padding:0 16px'},h('small',{},'La persona activa se usa en los chats nuevos y en los que no tengan una propia.')))};
+function editPersona(src){const isNew=!src;const p=src?structuredClone(src):{id:uid(),name:'',description:'',avatar:''};
+  const name=h('input',{value:p.name}),desc=h('textarea',{rows:5,value:p.description});
+  const avEl=h('div',{class:'av',style:'width:72px;height:72px;cursor:pointer'});const paint=()=>avEl.replaceChildren(p.avatar?h('img',{src:p.avatar}):'📷');paint();
+  avEl.onclick=async()=>{const[fl]=await pickFile('image/*');if(fl){try{p.avatar=await resizeImg(fl,256);paint()}catch(e){toast(e.message)}}};
+  sheet(isNew?'Nueva persona':'Editar persona',[h('div',{style:'display:flex;gap:12px;align-items:center'},avEl,h('div',{style:'flex:1'},field('Nombre',name))),field('Descripción (quién eres en la historia)',desc),
+    h('div',{class:'btns'},btn('Guardar',async()=>{if(!name.value.trim())return toast('Falta el nombre');p.name=name.value.trim();p.description=desc.value;await put('personas',p);await closeTop();R.personas()},'pri'),
+      btn('Usar como activa',async()=>{if(!name.value.trim())return toast('Falta el nombre');p.name=name.value.trim();p.description=desc.value;await put('personas',p);S.settings.personaId=p.id;await saveSettings();await closeTop();R.personas()}),
+      !isNew&&S.personas.size>1?btn('Eliminar',async()=>{if(!confirm('¿Eliminar esta persona?'))return;await rm('personas',p.id);if(S.settings.personaId===p.id){S.settings.personaId=[...S.personas.keys()][0];await saveSettings()}await closeTop();R.personas()},'danger'):null)])}
+
+/* ================= lorebooks ================= */
+R.lore=()=>{const lbs=[...S.lores.values()].sort((a,b)=>(a.scope===b.scope?a.name.localeCompare(b.name):a.scope==='global'?-1:1));
+  main.replaceChildren(header('Lorebooks',btn('Importar',async()=>{const fs=await pickFile('.json,application/json',true);let n=0;
+      for(const f of fs){try{const j=JSON.parse(await f.text());const es=normEntries(j.entries||j);if(!es.length)throw new Error('sin entradas');await put('lores',{id:uid(),name:j.name||f.name.replace(/\.\w+$/,''),scope:'global',active:false,entries:es,log:[]});n++}catch(e){toast(f.name+': '+e.message,4000)}}
+      if(n){toast(n+' lorebook(s) importado(s)');R.lore()}}),btn('＋',()=>newLore(),'pri')),
+    h('div',{class:'list'},lbs.length?lbs.map(b=>{const o=b.ownerId&&S.chars.get(b.ownerId);return h('div',{class:'row',onclick:()=>openLore(b.id)},h('div',{class:'av'},'📖'),
+      h('div',{class:'grow'},h('b',{},b.name),h('small',{},b.entries.length+' entradas')),o?h('span',{class:'chip'},'personaje'):(b.active?h('span',{class:'chip a'},'activo'):null))}):empty('Sin lorebooks.')));
+  S.onLore=()=>{if(S.tab==='lore'&&!layers.length)R.lore()}};
+function newLore(){const name=h('input',{placeholder:'Nombre del lorebook'});
+  sheet('Nuevo lorebook',[field('Nombre',name),h('div',{class:'btns'},btn('Crear vacío',async()=>{if(!name.value.trim())return toast('Falta el nombre');const lb={id:uid(),name:name.value.trim(),scope:'global',active:true,entries:[],log:[]};await put('lores',lb);await closeTop();openLore(lb.id)},'pri'),
+    btn('✨ Crear con IA',async()=>{if(!name.value.trim())return toast('Falta el nombre');const lb={id:uid(),name:name.value.trim(),scope:'global',active:true,entries:[],log:[]};await closeTop();genSheet(lb,()=>{},true)}))])}
+function openLore(id){let q='';
+  const L=screen(S.lores.get(id).name);const list=h('div',{style:'display:flex;flex-direction:column;gap:8px;padding:0 12px'});
+  const drawList=()=>{const lb=S.lores.get(id);if(!lb)return;const es=[...lb.entries].reverse().filter(e=>!q||(e.name+' '+e.keys.join(' ')+' '+e.content).toLowerCase().includes(q));
+    list.replaceChildren(...(es.length?es.map(e=>h('div',{class:'entry',onclick:()=>editEntry(lb,e,draw)},
+      h('div',{class:'t'},h('b',{},e.name||e.keys[0]||'(sin nombre)'),e.auto?h('span',{class:'chip a'},'auto'):null,e.constant?h('span',{class:'chip'},'siempre'):null,e.enabled===false?h('span',{class:'chip'},'off'):null),
+      h('small',{},e.keys.join(', ')||'sin claves'),h('p',{},e.content.slice(0,150)))):[empty('Sin entradas.')]))};
+  const draw=()=>{const lb=S.lores.get(id);if(!lb)return;const own=lb.ownerId?S.chars.get(lb.ownerId):null;L.ttl.textContent=lb.name;
+    L.body.replaceChildren(h('div',{class:'card',style:'margin-top:4px'},
+      field('Nombre',h('input',{value:lb.name,onchange:async e=>{lb.name=e.target.value.trim()||lb.name;await put('lores',lb);L.ttl.textContent=lb.name}})),
+      own?toggle('Actualizar automáticamente desde los chats',lb.autoUpdate!==false,async v=>{lb.autoUpdate=v;await put('lores',lb)}):toggle('Activo en todos los chats',!!lb.active,async v=>{lb.active=v;await put('lores',lb)}),
+      h('div',{class:'btns'},btn('＋ Entrada',()=>editEntry(lb,null,draw),'pri'),btn('✨ Generar',()=>genSheet(lb,draw)),
+        own?btn('⟳ Actualizar ahora',async()=>{const c=[...S.chats.values()].filter(c=>c.charId===lb.ownerId).sort((a,b)=>b.updated-a.updated)[0];if(!c)return toast('Primero inicia un chat con este personaje');toast('Analizando chat…');await updateLore(c,true);draw()}):null,
+        btn('↶ Historial',()=>logSheet(lb,draw)),btn('⬇ Exportar',()=>download(lb.name+'.json',exportLore(lb))),
+        !own?btn('Eliminar',async()=>{if(!confirm('¿Eliminar este lorebook?'))return;for(const c of S.chars.values())if((c.extraLore||[]).includes(id)){c.extraLore=c.extraLore.filter(x=>x!==id);await put('chars',c)}await rm('lores',id);await closeTop();R.lore()},'danger'):null)),
+      h('div',{style:'padding:0 12px 8px'},h('input',{placeholder:'Buscar entradas…',oninput:e=>{q=e.target.value.toLowerCase();drawList()}})),list);drawList()};
+  const prev=S.onLore;S.onLore=lid=>{if(lid===id)draw();else if(prev)prev(lid)};L.onClose=()=>{S.onLore=prev};draw()}
+function editEntry(lb,src,after){const isNew=!src;const e=src||{id:uid(),name:'',keys:[],content:'',constant:false,enabled:true,order:100};
+  const name=h('input',{value:e.name}),keys=h('input',{value:e.keys.join(', '),placeholder:'clave1, clave2, /regex/i'}),content=h('textarea',{rows:8,value:e.content}),order=h('input',{type:'number',value:e.order||100});
+  let cons=!!e.constant,en=e.enabled!==false;
+  sheet(isNew?'Nueva entrada':'Editar entrada',[field('Nombre',name),field('Claves (separadas por coma)',keys),field('Contenido',content),field('Prioridad (mayor = entra primero)',order),
+    toggle('Siempre activa (sin necesitar claves)',cons,v=>cons=v),toggle('Habilitada',en,v=>en=v),
+    h('div',{class:'btns'},btn('Guardar',async()=>{if(!content.value.trim())return toast('Falta el contenido');Object.assign(e,{name:name.value.trim(),keys:toKeys(keys.value),content:content.value.trim(),order:Number(order.value)||100,constant:cons,enabled:en});
+      if(isNew)lb.entries.push(e);await put('lores',lb);await closeTop();after()},'pri'),
+      !isNew?btn('Eliminar',async()=>{if(!confirm('¿Eliminar entrada?'))return;lb.entries=lb.entries.filter(x=>x!==e);await put('lores',lb);await closeTop();after()},'danger'):null)])}
+function logSheet(lb,after){const log=lb.log||[];
+  sheet('Historial de cambios automáticos',log.length?[...log].reverse().map((l,i)=>h('div',{class:'ck'},h('div',{},new Date(l.ts).toLocaleString('es-CL'),h('br'),h('small',{},l.changes.filter(c=>c.op==='add').length+' nuevas · '+l.changes.filter(c=>c.op==='update').length+' actualizadas')),
+    i===0?btn('Deshacer',async()=>{for(const c of l.changes){if(c.op==='add')lb.entries=lb.entries.filter(x=>x.id!==c.id);else{const k=lb.entries.findIndex(x=>x.id===c.id);if(k>=0)lb.entries[k]=c.prev}}lb.log=lb.log.slice(0,-1);await put('lores',lb);await closeTop();toast('Cambios revertidos');after()}):null)):[empty('Aún no hay cambios automáticos.')])}
+function genSheet(lb,after,isNew){const desc=h('textarea',{rows:4,placeholder:lb.ownerId?'Opcional. Déjalo vacío para que lo deduzca solo de la ficha del personaje.':'Describe el mundo, tema o lo que debe cubrir.'});
+  const count=h('input',{type:'number',value:8,min:1,max:20});const out=h('div',{style:'display:flex;flex-direction:column;gap:8px'});let found=[];
+  const L=sheet('Generar entradas con IA',[field('Descripción',desc),field('Cantidad',count),
+    btn('✨ Generar',async function(ev){if(!lb.ownerId&&!desc.value.trim())return toast('Describe qué debe cubrir');const b=ev.currentTarget;b.disabled=true;b.textContent='Generando…';
+      try{found=await genEntries(lb,{desc:desc.value.trim(),count:Math.min(20,Number(count.value)||8)});
+        const checks=found.map(()=>true);
+        out.replaceChildren(...found.map((e,i)=>h('div',{class:'ck'},h('input',{type:'checkbox',checked:true,onchange:x=>checks[i]=x.target.checked}),h('div',{},h('b',{},e.name),h('br'),h('small',{},e.keys.join(', ')),h('br'),e.content))),
+          btn('Añadir seleccionadas',async()=>{const sel=found.filter((_,i)=>checks[i]);lb.entries.push(...sel);await put('lores',lb);await closeTop();toast(sel.length+' entradas añadidas');if(isNew)openLore(lb.id);else after()},'pri'))}
+      catch(e){toast(e.message,4500)}b.disabled=false;b.textContent='✨ Generar de nuevo'},'pri'),out],{full:true})}
+
+/* ================= chat ================= */
+function openChat(chatId){
+  const chat=S.chats.get(chatId);const ch=S.chars.get(chat.charId);let c=ctxOf(chat);
+  const L=screen('',{actions:[h('button',{class:'ic',onclick:()=>chatMenu(chat,()=>{c=ctxOf(chat);L.ttl.replaceChildren(chat.title,h('small',{},ch.name))})},'⋮')]});
+  L.ttl.replaceChildren(chat.title,h('small',{},ch.name));
+  const list=h('div',{class:'msgs'});const ta=h('textarea',{rows:1,placeholder:'Escribe…'});const send=h('button',{class:'send'},'➤');
+  L.el.append(list,h('div',{class:'comp'},ta,send));
+  let oldest=null,hasMore=false,busy=false,ac=null,moreBtn=null;
+  const near=()=>list.scrollHeight-list.scrollTop-list.clientHeight<140;
+  const stick=()=>{list.scrollTop=list.scrollHeight};
+  const act=(t,fn,cls='')=>h('button',{class:cls,onclick:fn},t);
+  function msgEl(m){const bot=m.role==='assistant';const txt=h('div',{class:'txt'});txt.innerHTML=md(sub(m.content,c));
+    const el=h('div',{class:'msg '+(bot?'bot':'me'),'data-id':m.id},bot?h('div',{class:'who'},ch.avatar?h('img',{src:ch.avatar}):null,ch.name):null,txt,
+      h('div',{class:'acts'},act('✎',()=>edit(m,el)),act('✕',()=>del(m,el)),bot&&m.brief?act('📋',()=>showBrief(m,el)):null,bot?act('⟳',()=>generate(m,el),'rg'):null));el._m=m;return el}
+  function showBrief(m,el){const area=h('textarea',{rows:12,value:m.brief});const last=list.lastElementChild===el;
+    sheet('Notas del director',[h('small',{},'Es el plan que recibió el modelo que escribe. '+(last?'Puedes editarlo y reescribir la respuesta con él para reorientar la escena.':'Solo se puede reescribir con otro plan en la última respuesta.')),area,
+      h('div',{class:'btns'},last?btn('Reescribir con este plan',async()=>{const b=area.value.trim();await closeTop();generate(m,el,b)},'pri'):null)],{full:true})}
+  function edit(m,el){if(busy)return;const t=el.querySelector('.txt');const area=h('textarea',{rows:5,value:m.content});
+    const bar=h('div',{class:'btns',style:'margin-top:6px'},btn('Guardar',async()=>{m.content=area.value;await DB.put('messages',m);const n=msgEl(m);el.replaceWith(n)},'pri'),btn('Cancelar',()=>{el.replaceWith(msgEl(m))}));
+    t.replaceChildren(area,bar);area.focus()}
+  async function del(m,el){if(busy||!confirm('¿Borrar este mensaje?'))return;await DB.del('messages',m.id);el.remove()}
+  function updMore(){if(moreBtn){moreBtn.remove();moreBtn=null}
+    if(hasMore){moreBtn=btn('↑ Cargar anteriores',loadMore,'more');list.prepend(moreBtn)}}
+  async function loadMore(){const ms=await DB.msgs(chat.id,{beforeId:oldest,limit:S.settings.pageSize+1});hasMore=ms.length>S.settings.pageSize;if(hasMore)ms.shift();
+    if(!ms.length){updMore();return}const h0=list.scrollHeight;const first=moreBtn?moreBtn.nextSibling:list.firstChild;
+    for(const m of ms)list.insertBefore(msgEl(m),first);oldest=ms[0].id;updMore();list.scrollTop+=list.scrollHeight-h0}
+  function trimDom(){const els=list.querySelectorAll('.msg');let ex=els.length-110;if(ex>0){for(let i=0;i<ex;i++)els[i].remove();oldest=list.querySelector('.msg')._m.id;hasMore=true;updMore()}}
+  function setBtn(){send.textContent=busy?'■':'➤'}
+  async function generate(regen,regenEl,forced){
+    if(busy)return;const p=mainProfile();if(!p){toast('Configura una conexión en Ajustes');return}
+    busy=true;setBtn();ac=new AbortController();
+    let m=regen||{chatId:chat.id,role:'assistant',content:'',ts:Date.now()};const old=m.content;
+    let el=regenEl;if(!regen){el=msgEl(m);list.append(el)}
+    const txt=el.querySelector('.txt');el.classList.add('stream');txt.innerHTML='<span class="dots">…</span>';stick();
+    let acc='',raf=0;const paint=()=>{raf=0;txt.innerHTML=md(sub(acc,c));if(near())stick()};
+    let brief='';const upTo=regen?regen.id:Infinity;
+    try{const st=S.settings;
+      if(forced!=null)brief=forced;
+      else if(st.dirOn&&dirProfile()){txt.innerHTML='<span class="dots">Planificando…</span>';
+        try{brief=await makeBrief(chat,upTo,ac.signal)}catch(e){if(e.name==='AbortError')throw e;toast('Director: '+e.message+' · escribo sin plan',4500)}}
+      const{system,messages,preset}=await buildPrompt(chat,upTo,{role:brief?'writer':'single',brief});
+      txt.innerHTML='<span class="dots">…</span>';
+      await llm(p,{system,messages,temperature:preset.temperature,maxTokens:preset.maxTokens,signal:ac.signal,onToken:t=>{acc=t;if(!raf)raf=requestAnimationFrame(paint)}})}
+    catch(e){if(e.name!=='AbortError')toast(e.message,5000)}
+    cancelAnimationFrame(raf);acc=acc.trim();
+    if(acc){m.content=acc;if(brief)m.brief=brief;else delete m.brief;const k=await DB.put('messages',m);m.id=k;chat.updated=Date.now();await put('chats',chat);const n=msgEl(m);el.replaceWith(n);trimDom();if(!regen)afterTurn(chat)}
+    else{if(regen){m.content=old;el.replaceWith(msgEl(m))}else el.remove()}
+    busy=false;setBtn();if(near())stick()}
+  async function doSend(){
+    if(busy){ac&&ac.abort();return}
+    const t=ta.value.trim();
+    if(t){const m={chatId:chat.id,role:'user',content:t,ts:Date.now()};m.id=await DB.put('messages',m);ta.value='';ta.style.height='';list.append(msgEl(m));stick()}
+    else{const last=list.querySelector('.msg:last-child');if(!last||last._m.role==='assistant')return}
+    generate()}
+  send.onclick=doSend;ta.oninput=()=>{ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,140)+'px'};
+  (async()=>{const ms=await DB.msgs(chat.id,{limit:S.settings.pageSize+1});hasMore=ms.length>S.settings.pageSize;if(hasMore)ms.shift();
+    for(const m of ms)list.append(msgEl(m));oldest=ms.length?ms[0].id:null;updMore();stick()})();
+  L.onClose=()=>{ac&&ac.abort();if(S.tab==='chats')R.chats()}}
+function chatMenu(chat,after){const c=ctxOf(chat);
+  const tone=h('textarea',{rows:3,placeholder:'Ej.: oscuro y lento, humor seco, sin cursivas… (vacío = tono global)',value:chat.tone||''});
+  const preset=sel([['','Predeterminado (global)'],...[...S.presets.values()].map(p=>[p.id,p.name])],chat.presetId||'',v=>chat.presetId=v||null);
+  const persona=sel([['','Persona activa (global)'],...[...S.personas.values()].map(p=>[p.id,p.name])],chat.personaId||'',v=>chat.personaId=v||null);
+  const summ=h('textarea',{rows:4,value:chat.summary||'',placeholder:'Se genera sola cuando el chat supera el presupuesto de contexto.'});
+  sheet('Ajustes del chat',[field('Tono / estilo de este chat',tone),field('Preset',preset),field('Persona',persona),field('Resumen de la historia (editable)',summ),
+    h('div',{class:'btns'},btn('Guardar',async()=>{chat.tone=tone.value.trim();chat.summary=summ.value.trim();await put('chats',chat);await closeTop();after()},'pri'),
+      btn('Resumir ahora',async()=>{toast('Resumiendo…');await maybeSummarize(chat,true);summ.value=chat.summary||''}),
+      btn('⟳ Actualizar lore',()=>{toast('Analizando chat…');updateLore(chat,true)}),
+      btn('📖 Lorebook',async()=>{const lb=await ensureCharLore(c.ch);await closeTop();openLore(lb.id)}),
+      btn('Renombrar',async()=>{const t=prompt('Título del chat',chat.title);if(t&&t.trim()){chat.title=t.trim();await put('chats',chat);await closeTop();after()}}),
+      btn('Eliminar chat',async()=>{if(!confirm('¿Eliminar este chat completo?'))return;await DB.delChat(chat.id);await rm('chats',chat.id);await closeTop();await closeTop()},'danger'))])}
+
+/* ================= ajustes ================= */
+R.settings=()=>{const st=S.settings;const num=(k,label,min,max)=>field(label,h('input',{type:'number',min,max,value:st[k],onchange:async e=>{st[k]=Math.min(max,Math.max(min,Number(e.target.value)||st[k]));await saveSettings()}}));
+  const profs=st.profiles;const pOpts=[['','Automática (el director si está activo; si no, la principal)'],...profs.map(p=>[p.id,p.name])];
+  main.replaceChildren(header('Ajustes'),
+    h('div',{class:'card'},h('h3',{},'Conexiones (API)'),
+      ...profs.map(p=>h('div',{class:'row',onclick:()=>editProfile(p)},h('div',{class:'grow'},h('b',{},p.name),h('small',{},p.kind+' · '+(p.model||'sin modelo'))),p.id===(mainProfile()||{}).id?h('span',{class:'chip a'},'principal'):null)),
+      btn('＋ Añadir conexión',()=>editProfile(null)),
+      profs.length?field('Conexión principal',sel(profs.map(p=>[p.id,p.name]),(mainProfile()||{}).id,async v=>{st.activeProfile=v;await saveSettings();R.settings()})):null,
+      profs.length?field('Conexión de memoria: lorebook automático, resúmenes y generador (conviene un modelo barato de contexto largo)',sel(pOpts,st.auxProfile||'',async v=>{st.auxProfile=v;await saveSettings()})):null),
+    h('div',{class:'card'},h('h3',{},'Director + escritor'),
+      h('small',{},'Un modelo capaz y de contexto largo (el director) lee todo —historial, resumen y lore— y prepara notas. Tu conexión principal, de contexto corto, escribe la respuesta usando solo esas notas, la ficha y los últimos mensajes. Cada respuesta hace dos llamadas.'),
+      toggle('Usar director',!!st.dirOn,async v=>{if(v&&!profs.length){toast('Primero añade una conexión');return R.settings()}
+        st.dirOn=v;if(v&&!dirProfile())st.dirProfile=(profs.find(p=>p.id!==(mainProfile()||{}).id)||profs[0]).id;await saveSettings();R.settings()}),
+      st.dirOn&&profs.length?[field('Conexión del director',sel(profs.map(p=>[p.id,p.name]),st.dirProfile,async v=>{st.dirProfile=v;await saveSettings()})),
+        num('dirCtxTokens','Contexto que lee el director (tokens aprox.)',2000,1000000)]:null),
+    h('div',{class:'card'},h('h3',{},'Preset y tono'),
+      field('Preset activo',sel([...S.presets.values()].map(p=>[p.id,p.name]),st.presetId,async v=>{st.presetId=v;await saveSettings()})),
+      h('div',{class:'btns'},btn('Editar preset',()=>editPreset(S.presets.get(st.presetId))),btn('＋ Nuevo preset',()=>editPreset(null))),
+      field('Tono global (se puede sobrescribir en cada chat)',h('textarea',{rows:3,placeholder:'Ej.: prosa sensorial, ritmo lento, humor seco; evita clichés.',value:st.tone,onchange:async e=>{st.tone=e.target.value;await saveSettings()}}))),
+    h('div',{class:'card'},h('h3',{},'Memoria y contexto'),num('ctxTokens','Contexto del modelo que escribe (tokens aprox.; ajústalo a lo que aguanta tu Gemma)',500,200000),num('loreTokens','Presupuesto de lore por mensaje (tokens aprox.)',100,20000),num('scanDepth','Mensajes que se escanean en busca de claves',1,30),num('pageSize','Mensajes que se cargan por página',10,100),
+      toggle('Resumir automáticamente los mensajes antiguos',st.summarize,async v=>{st.summarize=v;await saveSettings()})),
+    h('div',{class:'card'},h('h3',{},'Lorebook automático'),toggle('Actualizar lorebooks de personaje desde los chats',st.autoLore,async v=>{st.autoLore=v;await saveSettings()}),num('autoLoreEvery','Cada cuántas respuestas del personaje',1,30)),
+    h('div',{class:'card'},h('h3',{},'Datos'),h('small',{id:'usage'},'Calculando uso…'),
+      h('div',{class:'btns'},btn('⬇ Exportar respaldo',exportAll),btn('⬆ Importar respaldo',async()=>{const[f]=await pickFile('.json');if(!f)return;if(!confirm('Esto reemplaza TODOS los datos actuales. ¿Continuar?'))return;try{await importAll(f);location.reload()}catch(e){toast(e.message,4000)}}),
+        btn('Borrar todo',async()=>{if(!confirm('¿Borrar absolutamente todo?'))return;for(const s of ['characters','personas','lorebooks','chats','presets','kv','messages'])await DB.clear(s);location.reload()},'danger'))));
+  if(navigator.storage&&navigator.storage.estimate)navigator.storage.estimate().then(e=>{const u=$('usage');if(u)u.textContent='Almacenamiento usado: '+(e.usage/1048576).toFixed(1)+' MB'})};
+const $=id=>document.getElementById(id);
+function editProfile(src){const isNew=!src;const p=src?{...src}:{id:uid(),name:'',kind:'openai',baseUrl:'',key:'',model:''};
+  const name=h('input',{value:p.name,placeholder:'Ej.: OpenRouter'});const url=h('input',{value:p.baseUrl,placeholder:DEFURL[p.kind],type:'url'});const key=h('input',{value:p.key,type:'password',placeholder:'API key'});
+  const model=h('input',{value:p.model,placeholder:'modelo',list:'mdl'});const dl=h('datalist',{id:'mdl'});
+  const kind=sel([['openai','Compatible con OpenAI (OpenRouter, DeepSeek, OpenAI, local…)'],['anthropic','Anthropic (Claude)'],['gemini','Google Gemini']],p.kind,v=>{p.kind=v;url.placeholder=DEFURL[v]});
+  let ns=!!p.noSystem;
+  const read=()=>{p.name=name.value.trim()||'Conexión';p.baseUrl=url.value.trim();p.key=key.value.trim();p.model=model.value.trim();p.noSystem=ns};
+  sheet(isNew?'Nueva conexión':'Editar conexión',[field('Nombre',name),field('Tipo',kind),field('URL base (vacío = predeterminada)',url),field('API key',key),field('Modelo',model,dl),toggle('Sin rol "system": fusionar las instrucciones en el primer mensaje (actívalo si el modelo da error con las instrucciones de sistema, como pasa con algunos Gemma)',ns,v=>ns=v),
+    h('div',{class:'btns'},btn('Cargar modelos',async()=>{read();try{const ms=await fetchModels(p);dl.replaceChildren(...ms.map(m=>h('option',{value:m})));toast(ms.length+' modelos disponibles: toca el campo Modelo')}catch(e){toast('No se pudo: '+e.message,4000)}}),
+      btn('Probar',async()=>{read();toast('Probando…');try{const r=await llm(p,{system:'Responde en una palabra.',messages:[{role:'user',content:'Di "ok"'}],maxTokens:20});toast('Conexión OK: '+r.trim().slice(0,30))}catch(e){toast(e.message,5000)}})),
+    h('div',{class:'btns'},btn('Guardar',async()=>{read();S.settings.profiles=[...S.settings.profiles.filter(x=>x.id!==p.id),p];if(!S.settings.activeProfile||isNew&&S.settings.profiles.length===1)S.settings.activeProfile=p.id;await saveSettings();await closeTop();R.settings()},'pri'),
+      !isNew?btn('Eliminar',async()=>{if(!confirm('¿Eliminar conexión?'))return;S.settings.profiles=S.settings.profiles.filter(x=>x.id!==p.id);if(S.settings.activeProfile===p.id)S.settings.activeProfile=(S.settings.profiles[0]||{}).id||null;if(S.settings.auxProfile===p.id)S.settings.auxProfile='';await saveSettings();await closeTop();R.settings()},'danger'):null),
+    h('small',{},'La clave se guarda solo en este dispositivo (IndexedDB) y se envía únicamente al proveedor elegido.')])}
+function editPreset(src){const isNew=!src;const p=src?{...src}:{id:uid(),name:'',instructions:'',temperature:0.85,maxTokens:600};
+  const name=h('input',{value:p.name}),ins=h('textarea',{rows:9,value:p.instructions}),temp=h('input',{type:'number',step:'0.05',min:0,max:2,value:p.temperature}),mt=h('input',{type:'number',min:50,max:8000,value:p.maxTokens});
+  sheet(isNew?'Nuevo preset':'Editar preset',[field('Nombre',name),field('Instrucciones (usa {{char}} y {{user}})',ins),field('Temperatura',temp),field('Tokens máximos por respuesta',mt),
+    h('div',{class:'btns'},btn('Guardar',async()=>{if(!name.value.trim())return toast('Falta el nombre');Object.assign(p,{name:name.value.trim(),instructions:ins.value,temperature:Number(temp.value)||0.85,maxTokens:Number(mt.value)||600});await put('presets',p);if(isNew){S.settings.presetId=p.id;await saveSettings()}await closeTop();R.settings()},'pri'),
+      !isNew&&S.presets.size>1?btn('Eliminar',async()=>{if(!confirm('¿Eliminar preset?'))return;await rm('presets',p.id);if(S.settings.presetId===p.id){S.settings.presetId=[...S.presets.keys()][0];await saveSettings()}await closeTop();R.settings()},'danger'):null)])}
+
+/* ================= arranque ================= */
+(async()=>{
+  try{await DB.open();await loadAll()}catch(e){main.replaceChildren(empty('No se pudo abrir la base de datos: '+e.message));return}
+  nav.append(...TABS.map(([k,l,i])=>h('button',{onclick:()=>{while(layers.length){const L=layers.pop();L.close()}go(k)}},h('span',{},i),l)));
+  go('chats');
+  if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+  if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
