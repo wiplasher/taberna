@@ -186,47 +186,62 @@ const dirProfile=()=>S.settings.profiles.find(p=>p.id===S.settings.dirProfile)||
 const auxProfile=()=>S.settings.profiles.find(p=>p.id===S.settings.auxProfile)||(S.settings.dirOn&&dirProfile())||mainProfile();
 function mergeRoles(msgs,first='user'){const out=[];for(const m of msgs){const r=m.role;if(out.length&&out[out.length-1].role===r)out[out.length-1].content+='\n\n'+m.content;else out.push({role:r,content:m.content})}
   if(out.length&&out[0].role!==first)out.unshift({role:first,content:'(Inicio de la conversación)'});return out}
-async function readSSE(resp,onData){const rd=resp.body.getReader(),dec=new TextDecoder();let buf='',all='';
+const VERSION='2026-10-23-c';
+async function readSSE(resp,onData){const rd=resp.body.getReader(),dec=new TextDecoder();let buf='',all='',n=0;
+  const line=l=>{l=l.replace(/\r$/,'');if(l.startsWith('data:')){const d=l.slice(5).trim();if(d&&d!=='[DONE]'){n++;onData(d)}}};
   for(;;){const{done,value}=await rd.read();if(done)break;const chunk=dec.decode(value,{stream:true});all+=chunk;buf+=chunk;
-    for(;;){const m=/\r?\n\r?\n/.exec(buf);if(!m)break;const ev=buf.slice(0,m.index);buf=buf.slice(m.index+m[0].length);
-      for(const line of ev.split(/\r?\n/))if(line.startsWith('data:')){const d=line.slice(5).trim();if(d&&d!=='[DONE]')onData(d)}}}return all}
+    let i;while((i=buf.indexOf('\n'))>=0){line(buf.slice(0,i));buf=buf.slice(i+1)}}
+  buf+=dec.decode();if(buf)line(buf);return{raw:all,events:n}}
+const plain=j=>{const c0=j.choices&&j.choices[0];
+  if(c0){const m=c0.message&&c0.message.content;if(typeof m==='string')return m;if(Array.isArray(m))return m.map(x=>x.text||'').join('');return c0.text||''}
+  if(Array.isArray(j.content))return j.content.map(x=>x.text||'').join('');
+  const cd=j.candidates&&j.candidates[0];if(cd&&cd.content)return(cd.content.parts||[]).filter(x=>!x.thought).map(x=>x.text||'').join('');
+  return''};
 async function llm(p,{system,messages,temperature=0.8,maxTokens=800,signal,onToken}){
   if(!p)throw new Error('Configura una conexión en Ajustes');
   if(p.noSystem&&p.kind!=='anthropic'&&system){messages=[...messages];
     if(messages[0]&&messages[0].role==='user')messages[0]={role:'user',content:system+'\n\n---\n\n'+messages[0].content};else messages.unshift({role:'user',content:system});system=''}
-  const hd={'Content-Type':'application/json'};let url,body,pick;
-  if(p.kind==='anthropic'){
-    url=base(p)+'/v1/messages';hd['x-api-key']=p.key;hd['anthropic-version']='2023-06-01';hd['anthropic-dangerous-direct-browser-access']='true';
-    body={model:p.model,system,messages:mergeRoles(messages),max_tokens:maxTokens,temperature:Math.min(temperature,1),stream:true};
-    pick=j=>j.type==='content_block_delta'&&j.delta&&j.delta.text||''}
-  else if(p.kind==='gemini'){
-    url=`${base(p)}/v1beta/models/${p.model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(p.key)}`;
-    body={...(system?{systemInstruction:{parts:[{text:system}]}}:{}),contents:mergeRoles(messages.map(m=>({role:m.role==='assistant'?'model':'user',content:m.content})),'user').map(m=>({role:m.role,parts:[{text:m.content}]})),
-      generationConfig:{temperature,maxOutputTokens:maxTokens},
-      safetySettings:['HARASSMENT','HATE_SPEECH','SEXUALLY_EXPLICIT','DANGEROUS_CONTENT'].map(c=>({category:'HARM_CATEGORY_'+c,threshold:'BLOCK_NONE'}))};
-    pick=j=>((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).filter(x=>!x.thought).map(x=>x.text||'').join('')}
-  else{
-    url=base(p)+'/chat/completions';if(p.key)hd.Authorization='Bearer '+p.key;
-    body={model:p.model,messages:[...(system?[{role:'system',content:system}]:[]),...messages],temperature,max_tokens:maxTokens,stream:true};
-    pick=j=>j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content||''}
-  const r=await fetch(url,{method:'POST',headers:hd,body:JSON.stringify(body),signal});
-  if(!r.ok){let t='';try{t=await r.text()}catch{}throw new Error(r.status+': '+t.slice(0,240))}
-  let out='',think=0,fin='',errMsg='';
-  const raw=await readSSE(r,d=>{let j;try{j=JSON.parse(d)}catch{return}
+  const hd={'Content-Type':'application/json'};
+  if(p.kind==='anthropic'){hd['x-api-key']=p.key;hd['anthropic-version']='2023-06-01';hd['anthropic-dangerous-direct-browser-access']='true'}
+  else if(p.kind!=='gemini'&&p.key)hd.Authorization='Bearer '+p.key;
+  const mk=stream=>{
+    if(p.kind==='anthropic')return{url:base(p)+'/v1/messages',
+      body:{model:p.model,system,messages:mergeRoles(messages),max_tokens:maxTokens,temperature:Math.min(temperature,1),stream},
+      pick:j=>j.type==='content_block_delta'&&j.delta&&j.delta.text||''};
+    if(p.kind==='gemini')return{url:`${base(p)}/v1beta/models/${p.model}:${stream?'streamGenerateContent?alt=sse&':'generateContent?'}key=${encodeURIComponent(p.key)}`,
+      body:{...(system?{systemInstruction:{parts:[{text:system}]}}:{}),contents:mergeRoles(messages.map(m=>({role:m.role==='assistant'?'model':'user',content:m.content})),'user').map(m=>({role:m.role,parts:[{text:m.content}]})),
+        generationConfig:{temperature,maxOutputTokens:maxTokens},
+        safetySettings:['HARASSMENT','HATE_SPEECH','SEXUALLY_EXPLICIT','DANGEROUS_CONTENT'].map(c=>({category:'HARM_CATEGORY_'+c,threshold:'BLOCK_NONE'}))},
+      pick:plain};
+    return{url:base(p)+'/chat/completions',
+      body:{model:p.model,messages:[...(system?[{role:'system',content:system}]:[]),...messages],temperature,max_tokens:maxTokens,stream},
+      pick:j=>j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content||''}};
+  const call=async stream=>{const{url,body,pick}=mk(stream);
+    const r=await fetch(url,{method:'POST',headers:hd,body:JSON.stringify(body),signal});
+    if(!r.ok){let t='';try{t=await r.text()}catch{}throw new Error(r.status+': '+t.slice(0,240))}
+    return{r,pick}};
+  let out='',think=0,fin='',errMsg='',raw='',events=0;
+  const eat=j=>{
     if(j.error)errMsg=typeof j.error==='string'?j.error:(j.error.message||JSON.stringify(j.error));
-    const ch=j.choices&&j.choices[0];if(ch){if(ch.finish_reason)fin=ch.finish_reason;const dl=ch.delta||{};think+=String(dl.reasoning_content||dl.reasoning||'').length}
-    if(j.candidates&&j.candidates[0]&&j.candidates[0].finishReason)fin=j.candidates[0].finishReason;
+    const ch=j.choices&&j.choices[0];if(ch){if(ch.finish_reason)fin=ch.finish_reason;const dl=ch.delta||ch.message||{};think+=String(dl.reasoning_content||dl.reasoning||'').length}
+    const cd=j.candidates&&j.candidates[0];if(cd&&cd.finishReason)fin=cd.finishReason;
+    if(j.promptFeedback&&j.promptFeedback.blockReason)fin='bloqueado: '+j.promptFeedback.blockReason;
     if(j.type==='message_delta'&&j.delta&&j.delta.stop_reason)fin=j.delta.stop_reason;
-    const t=pick(j);if(t){out+=t;if(onToken)onToken(out)}});
-  if(!out.trim()&&raw.trim()&&!/(^|\n)data:/.test(raw)){ /* el proveedor ignoró el streaming y devolvió JSON plano */
-    try{const j=JSON.parse(raw);const c0=j.choices&&j.choices[0];
-      out=(c0&&((c0.message&&c0.message.content)||c0.text))||(j.content&&j.content[0]&&j.content[0].text)||'';
-      if(!out&&j.error)errMsg=typeof j.error==='string'?j.error:(j.error.message||'');
-      if(out&&onToken)onToken(out)}catch{}}
+    if(j.stop_reason)fin=j.stop_reason};
+  {const{r,pick}=await call(true);
+    const res=await readSSE(r,d=>{let j;try{j=JSON.parse(d)}catch{return}eat(j);const t=pick(j);if(t){out+=t;if(onToken)onToken(out)}});
+    raw=res.raw;events=res.events}
+  /* el proveedor ignoró el streaming y devolvió JSON plano */
+  if(!out.trim()&&!errMsg&&raw.trim()&&!events){try{const j=JSON.parse(raw);eat(j);out=plain(j);if(out&&onToken)onToken(out)}catch{}}
+  /* sigue vacío: un reintento sin streaming */
+  if(!out.trim()&&!errMsg&&!think&&!(events&&fin)){
+    try{const{r}=await call(false);const txt=await r.text();let j;try{j=JSON.parse(txt)}catch{}
+      if(j){eat(j);out=plain(j);if(out&&onToken)onToken(out)}if(!raw)raw=txt||''}
+    catch(e){if(e.name==='AbortError')throw e;errMsg=errMsg||e.message}}
   if(!out.trim()){
     if(errMsg)throw new Error(errMsg);
     if(think&&(!fin||/length|max_tokens/i.test(fin)))throw new Error('El modelo gastó todos los tokens razonando y no escribió nada. Sube el límite de tokens (director: en Ajustes; escritor: en el preset).');
-    throw new Error('Respuesta vacía del modelo'+(fin?' (motivo: '+fin+')':'')+(raw.trim()&&raw.length<300?' · '+raw.trim().slice(0,200):''))}
+    throw new Error('Respuesta vacía del modelo'+(fin?' (motivo: '+fin+')':'')+' · '+raw.length+' bytes recibidos'+(raw.trim()?': '+raw.trim().replace(/\s+/g,' ').slice(0,160):''))}
   return out}
 async function fetchModels(p){const b=base(p);let url,hd={};
   if(p.kind==='gemini')url=`${b}/v1beta/models?pageSize=200&key=${encodeURIComponent(p.key)}`;
@@ -579,7 +594,7 @@ R.settings=()=>{const st=S.settings;const num=(k,label,min,max)=>field(label,h('
     h('div',{class:'card'},h('h3',{},'Memoria y contexto'),num('ctxTokens','Contexto del modelo que escribe (tokens aprox.; ajústalo a lo que aguanta tu Gemma)',500,200000),num('loreTokens','Presupuesto de lore por mensaje (tokens aprox.)',100,20000),num('scanDepth','Mensajes que se escanean en busca de claves',1,30),num('pageSize','Mensajes que se cargan por página',10,100),
       toggle('Resumir automáticamente los mensajes antiguos',st.summarize,async v=>{st.summarize=v;await saveSettings()})),
     h('div',{class:'card'},h('h3',{},'Lorebook automático'),toggle('Actualizar lorebooks de personaje desde los chats',st.autoLore,async v=>{st.autoLore=v;await saveSettings()}),num('autoLoreEvery','Cada cuántas respuestas del personaje',1,30)),
-    h('div',{class:'card'},h('h3',{},'Datos'),h('small',{id:'usage'},'Calculando uso…'),
+    h('div',{class:'card'},h('h3',{},'Datos'),h('small',{id:'usage'},'Calculando uso…'),h('small',{},'Versión '+VERSION),
       h('div',{class:'btns'},btn('⬇ Exportar respaldo',exportAll),btn('⬆ Importar respaldo',async()=>{const[f]=await pickFile('.json');if(!f)return;if(!confirm('Esto reemplaza TODOS los datos actuales. ¿Continuar?'))return;try{await importAll(f);location.reload()}catch(e){toast(e.message,4000)}}),
         btn('Borrar todo',async()=>{if(!confirm('¿Borrar absolutamente todo?'))return;for(const s of ['characters','personas','lorebooks','chats','presets','kv','messages'])await DB.clear(s);location.reload()},'danger'))));
   if(navigator.storage&&navigator.storage.estimate)navigator.storage.estimate().then(e=>{const u=$('usage');if(u)u.textContent='Almacenamiento usado: '+(e.usage/1048576).toFixed(1)+' MB'})};
