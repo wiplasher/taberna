@@ -146,7 +146,7 @@ const S={settings:null,chars:new Map(),personas:new Map(),lores:new Map(),preset
 const put=(k,o)=>{S[k].set(o.id,o);return DB.put(KS[k],o)};
 const rm=(k,id)=>{S[k].delete(id);return DB.del(KS[k],id)};
 const saveSettings=()=>DB.put('kv',{k:'settings',v:S.settings});
-const DEF={profiles:[],activeProfile:null,auxProfile:'',dirOn:false,dirProfile:'',dirCtxTokens:30000,personaId:null,presetId:null,tone:'',ctxTokens:6000,loreTokens:1200,scanDepth:6,pageSize:30,autoLore:true,autoLoreEvery:4,summarize:true};
+const DEF={profiles:[],activeProfile:null,auxProfile:'',dirOn:false,dirProfile:'',dirCtxTokens:30000,dirMaxTokens:4000,personaId:null,presetId:null,tone:'',ctxTokens:6000,loreTokens:1200,scanDepth:6,pageSize:30,autoLore:true,autoLoreEvery:4,summarize:true};
 const DEFURL={openai:'https://openrouter.ai/api/v1',anthropic:'https://api.anthropic.com',gemini:'https://generativelanguage.googleapis.com'};
 const CPT=3.5; /* caracteres por token (aprox.) */
 const SEED_PRESETS=[
@@ -186,10 +186,10 @@ const dirProfile=()=>S.settings.profiles.find(p=>p.id===S.settings.dirProfile)||
 const auxProfile=()=>S.settings.profiles.find(p=>p.id===S.settings.auxProfile)||(S.settings.dirOn&&dirProfile())||mainProfile();
 function mergeRoles(msgs,first='user'){const out=[];for(const m of msgs){const r=m.role;if(out.length&&out[out.length-1].role===r)out[out.length-1].content+='\n\n'+m.content;else out.push({role:r,content:m.content})}
   if(out.length&&out[0].role!==first)out.unshift({role:first,content:'(Inicio de la conversación)'});return out}
-async function readSSE(resp,onData){const rd=resp.body.getReader(),dec=new TextDecoder();let buf='';
-  for(;;){const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});
+async function readSSE(resp,onData){const rd=resp.body.getReader(),dec=new TextDecoder();let buf='',all='';
+  for(;;){const{done,value}=await rd.read();if(done)break;const chunk=dec.decode(value,{stream:true});all+=chunk;buf+=chunk;
     for(;;){const m=/\r?\n\r?\n/.exec(buf);if(!m)break;const ev=buf.slice(0,m.index);buf=buf.slice(m.index+m[0].length);
-      for(const line of ev.split(/\r?\n/))if(line.startsWith('data:')){const d=line.slice(5).trim();if(d&&d!=='[DONE]')onData(d)}}}}
+      for(const line of ev.split(/\r?\n/))if(line.startsWith('data:')){const d=line.slice(5).trim();if(d&&d!=='[DONE]')onData(d)}}}return all}
 async function llm(p,{system,messages,temperature=0.8,maxTokens=800,signal,onToken}){
   if(!p)throw new Error('Configura una conexión en Ajustes');
   if(p.noSystem&&p.kind!=='anthropic'&&system){messages=[...messages];
@@ -211,8 +211,23 @@ async function llm(p,{system,messages,temperature=0.8,maxTokens=800,signal,onTok
     pick=j=>j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content||''}
   const r=await fetch(url,{method:'POST',headers:hd,body:JSON.stringify(body),signal});
   if(!r.ok){let t='';try{t=await r.text()}catch{}throw new Error(r.status+': '+t.slice(0,240))}
-  let out='';await readSSE(r,d=>{let j;try{j=JSON.parse(d)}catch{return}const t=pick(j);if(t){out+=t;if(onToken)onToken(out)}});
-  if(!out.trim())throw new Error('Respuesta vacía del modelo');return out}
+  let out='',think=0,fin='',errMsg='';
+  const raw=await readSSE(r,d=>{let j;try{j=JSON.parse(d)}catch{return}
+    if(j.error)errMsg=typeof j.error==='string'?j.error:(j.error.message||JSON.stringify(j.error));
+    const ch=j.choices&&j.choices[0];if(ch){if(ch.finish_reason)fin=ch.finish_reason;const dl=ch.delta||{};think+=String(dl.reasoning_content||dl.reasoning||'').length}
+    if(j.candidates&&j.candidates[0]&&j.candidates[0].finishReason)fin=j.candidates[0].finishReason;
+    if(j.type==='message_delta'&&j.delta&&j.delta.stop_reason)fin=j.delta.stop_reason;
+    const t=pick(j);if(t){out+=t;if(onToken)onToken(out)}});
+  if(!out.trim()&&raw.trim()&&!/(^|\n)data:/.test(raw)){ /* el proveedor ignoró el streaming y devolvió JSON plano */
+    try{const j=JSON.parse(raw);const c0=j.choices&&j.choices[0];
+      out=(c0&&((c0.message&&c0.message.content)||c0.text))||(j.content&&j.content[0]&&j.content[0].text)||'';
+      if(!out&&j.error)errMsg=typeof j.error==='string'?j.error:(j.error.message||'');
+      if(out&&onToken)onToken(out)}catch{}}
+  if(!out.trim()){
+    if(errMsg)throw new Error(errMsg);
+    if(think&&(!fin||/length|max_tokens/i.test(fin)))throw new Error('El modelo gastó todos los tokens razonando y no escribió nada. Sube el límite de tokens (director: en Ajustes; escritor: en el preset).');
+    throw new Error('Respuesta vacía del modelo'+(fin?' (motivo: '+fin+')':'')+(raw.trim()&&raw.length<300?' · '+raw.trim().slice(0,200):''))}
+  return out}
 async function fetchModels(p){const b=base(p);let url,hd={};
   if(p.kind==='gemini')url=`${b}/v1beta/models?pageSize=200&key=${encodeURIComponent(p.key)}`;
   else if(p.kind==='anthropic'){url=b+'/v1/models?limit=100';hd={'x-api-key':p.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}}
@@ -239,7 +254,7 @@ EVITAR: errores o repeticiones que el escritor debe esquivar (frases ya usadas, 
 No escribas diálogo ni la respuesta final.`;
 async function makeBrief(chat,upToId,signal){
   const p=dirProfile();const{system,messages}=await buildPrompt(chat,upToId,{role:'director'});
-  const raw=await llm(p,{system,messages,temperature:0.4,maxTokens:1200,signal});
+  const raw=await llm(p,{system,messages,temperature:0.4,maxTokens:S.settings.dirMaxTokens||4000,signal});
   return raw.trim().slice(0,2500)}
 async function buildPrompt(chat,upToId=Infinity,{role='single',brief=''}={}){
   const c=ctxOf(chat),{ch,per}=c;const st=S.settings;
@@ -555,7 +570,8 @@ R.settings=()=>{const st=S.settings;const num=(k,label,min,max)=>field(label,h('
       toggle('Usar director',!!st.dirOn,async v=>{if(v&&!profs.length){toast('Primero añade una conexión');return R.settings()}
         st.dirOn=v;if(v&&!dirProfile())st.dirProfile=(profs.find(p=>p.id!==(mainProfile()||{}).id)||profs[0]).id;await saveSettings();R.settings()}),
       st.dirOn&&profs.length?[field('Conexión del director',sel(profs.map(p=>[p.id,p.name]),st.dirProfile,async v=>{st.dirProfile=v;await saveSettings()})),
-        num('dirCtxTokens','Contexto que lee el director (tokens aprox.)',2000,1000000)]:null),
+        num('dirCtxTokens','Contexto que lee el director (tokens aprox.)',2000,1000000),
+        num('dirMaxTokens','Tokens máximos del director (súbelo si el modelo razona mucho)',500,32000)]:null),
     h('div',{class:'card'},h('h3',{},'Preset y tono'),
       field('Preset activo',sel([...S.presets.values()].map(p=>[p.id,p.name]),st.presetId,async v=>{st.presetId=v;await saveSettings()})),
       h('div',{class:'btns'},btn('Editar preset',()=>editPreset(S.presets.get(st.presetId))),btn('＋ Nuevo preset',()=>editPreset(null))),
