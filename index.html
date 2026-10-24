@@ -187,7 +187,7 @@ const dirProfile=()=>S.settings.profiles.find(p=>p.id===S.settings.dirProfile)||
 const auxProfile=()=>S.settings.profiles.find(p=>p.id===S.settings.auxProfile)||(S.settings.dirOn&&dirProfile())||mainProfile();
 function mergeRoles(msgs,first='user'){const out=[];for(const m of msgs){const r=m.role;if(out.length&&out[out.length-1].role===r)out[out.length-1].content+='\n\n'+m.content;else out.push({role:r,content:m.content})}
   if(out.length&&out[0].role!==first)out.unshift({role:first,content:'(Inicio de la conversación)'});return out}
-const VERSION='2026-10-24-h';
+const VERSION='2026-10-24-i';
 const SW_CACHE='taberna-v1';
 async function readSSE(resp,onData){const rd=resp.body.getReader(),dec=new TextDecoder();let buf='',all='',n=0;
   const line=l=>{l=l.replace(/\r$/,'');if(l.startsWith('data:')){const d=l.slice(5).trim();if(d&&d!=='[DONE]'){n++;onData(d)}}};
@@ -556,8 +556,9 @@ function genSheet(lb,after,isNew){const desc=h('textarea',{rows:4,placeholder:lb
 /* ================= chat ================= */
 function openChat(chatId){
   const chat=S.chats.get(chatId);const ch=S.chars.get(chat.charId);let c=ctxOf(chat);
-  const L=screen('',{actions:[h('button',{class:'ic',onclick:()=>chatMenu(chat,()=>{c=ctxOf(chat);L.ttl.replaceChildren(chat.title,h('small',{},ch.name))})},'⋮')]});
-  L.ttl.replaceChildren(chat.title,h('small',{},ch.name));
+  const who=()=>{const m=mainProfile(),d=S.settings.dirOn&&dirProfile();return ch.name+(m?' · ✍ '+m.name:'')+(d?' · 🧭 '+d.name:'')};
+  const L=screen('',{actions:[h('button',{class:'ic',onclick:()=>chatMenu(chat,()=>{c=ctxOf(chat);L.ttl.replaceChildren(chat.title,h('small',{},who()))})},'⋮')]});
+  L.ttl.replaceChildren(chat.title,h('small',{},who()));
   L.body.remove(); /* el contenedor genérico de screen() quedaría vacío y se repartiría el alto con la lista */
   const list=h('div',{class:'msgs'});const ta=h('textarea',{rows:1,placeholder:'Escribe…'});const send=h('button',{class:'send'},'➤');
   L.el.append(list,h('div',{class:'comp'},ta,send));
