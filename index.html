@@ -187,7 +187,7 @@ const dirProfile=()=>S.settings.profiles.find(p=>p.id===S.settings.dirProfile)||
 const auxProfile=()=>S.settings.profiles.find(p=>p.id===S.settings.auxProfile)||(S.settings.dirOn&&dirProfile())||mainProfile();
 function mergeRoles(msgs,first='user'){const out=[];for(const m of msgs){const r=m.role;if(out.length&&out[out.length-1].role===r)out[out.length-1].content+='\n\n'+m.content;else out.push({role:r,content:m.content})}
   if(out.length&&out[0].role!==first)out.unshift({role:first,content:'(Inicio de la conversación)'});return out}
-const VERSION='2026-10-23-f';
+const VERSION='2026-10-24-h';
 const SW_CACHE='taberna-v1';
 async function readSSE(resp,onData){const rd=resp.body.getReader(),dec=new TextDecoder();let buf='',all='',n=0;
   const line=l=>{l=l.replace(/\r$/,'');if(l.startsWith('data:')){const d=l.slice(5).trim();if(d&&d!=='[DONE]'){n++;onData(d)}}};
@@ -218,7 +218,9 @@ async function llm(p,{system,messages,temperature=0.8,maxTokens=800,signal,onTok
     return{url:base(p)+'/chat/completions',
       body:{model:p.model,messages:[...(system?[{role:'system',content:system}]:[]),...messages],temperature,max_tokens:maxTokens,stream},
       pick:j=>j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content||''}};
-  const call=async stream=>{const{url,body,pick}=mk(stream);
+  let extra={};if(p.extra&&p.extra.trim()){try{extra=JSON.parse(p.extra)}catch{throw new Error('Parámetros extra de la conexión "'+p.name+'": JSON no válido')}
+    if(!extra||typeof extra!=='object'||Array.isArray(extra))extra={}}
+  const call=async stream=>{const{url,body,pick}=mk(stream);Object.assign(body,extra,'stream' in body?{stream:body.stream}:{});
     const r=await fetch(url,{method:'POST',headers:hd,body:JSON.stringify(body),signal});
     if(!r.ok){let t='';try{t=await r.text()}catch{}throw new Error(r.status+': '+t.slice(0,240))}
     return{r,pick}};
@@ -242,7 +244,8 @@ async function llm(p,{system,messages,temperature=0.8,maxTokens=800,signal,onTok
     catch(e){if(e.name==='AbortError')throw e;errMsg=errMsg||e.message}}
   if(!out.trim()){
     if(errMsg)throw new Error(errMsg);
-    if(think&&(!fin||/length|max_tokens/i.test(fin)))throw new Error('El modelo gastó todos los tokens razonando y no escribió nada. Sube el límite de tokens (director: en Ajustes; escritor: en el preset).');
+    if(think){const cutLen=/length|max_tokens/i.test(fin);
+      throw new Error('El modelo razonó ('+think+' caracteres) y no llegó a escribir: '+(cutLen?'se agotó el límite de tokens de salida ('+maxTokens+' enviados; el proveedor puede aplicar un tope menor).':fin?'terminó con motivo "'+fin+'".':'la conexión se cortó antes de terminar.')+' Prueba reducir el razonamiento: en la conexión, "Parámetros extra" → {"reasoning_effort":"low"}.')}
     throw new Error('Respuesta vacía del modelo'+(fin?' (motivo: '+fin+')':'')+' · '+raw.length+' bytes recibidos'+(raw.trim()?': '+raw.trim().replace(/\s+/g,' ').slice(0,160):''))}
   if(info)info.fin=fin;
   return out}
@@ -555,6 +558,7 @@ function openChat(chatId){
   const chat=S.chats.get(chatId);const ch=S.chars.get(chat.charId);let c=ctxOf(chat);
   const L=screen('',{actions:[h('button',{class:'ic',onclick:()=>chatMenu(chat,()=>{c=ctxOf(chat);L.ttl.replaceChildren(chat.title,h('small',{},ch.name))})},'⋮')]});
   L.ttl.replaceChildren(chat.title,h('small',{},ch.name));
+  L.body.remove(); /* el contenedor genérico de screen() quedaría vacío y se repartiría el alto con la lista */
   const list=h('div',{class:'msgs'});const ta=h('textarea',{rows:1,placeholder:'Escribe…'});const send=h('button',{class:'send'},'➤');
   L.el.append(list,h('div',{class:'comp'},ta,send));
   let oldest=null,hasMore=false,busy=false,ac=null,moreBtn=null;
@@ -669,17 +673,18 @@ function editProfile(src){const isNew=!src;const p=src?{...src}:{id:uid(),name:'
   const model=h('input',{value:p.model,placeholder:'modelo',list:'mdl'});const dl=h('datalist',{id:'mdl'});
   const kind=sel([['openai','Compatible con OpenAI (OpenRouter, DeepSeek, OpenAI, local…)'],['anthropic','Anthropic (Claude)'],['gemini','Google Gemini']],p.kind,v=>{p.kind=v;url.placeholder=DEFURL[v]});
   let ns=!!p.noSystem;
-  const read=()=>{p.name=name.value.trim()||'Conexión';p.baseUrl=url.value.trim();p.key=key.value.trim();p.model=model.value.trim();p.noSystem=ns};
-  sheet(isNew?'Nueva conexión':'Editar conexión',[field('Nombre',name),field('Tipo',kind),field('URL base (vacío = predeterminada)',url),field('API key',key),field('Modelo',model,dl),toggle('Sin rol "system": fusionar las instrucciones en el primer mensaje (actívalo si el modelo da error con las instrucciones de sistema, como pasa con algunos Gemma)',ns,v=>ns=v),
+  const extra=h('textarea',{rows:2,placeholder:'{"reasoning_effort":"low"}',value:p.extra||''});
+  const read=()=>{p.name=name.value.trim()||'Conexión';p.baseUrl=url.value.trim();p.key=key.value.trim();p.model=model.value.trim();p.noSystem=ns;p.extra=extra.value.trim()};
+  sheet(isNew?'Nueva conexión':'Editar conexión',[field('Nombre',name),field('Tipo',kind),field('URL base (vacío = predeterminada)',url),field('API key',key),field('Modelo',model,dl),toggle('Sin rol "system": fusionar las instrucciones en el primer mensaje (actívalo si el modelo da error con las instrucciones de sistema, como pasa con algunos Gemma)',ns,v=>ns=v),field('Parámetros extra (JSON, opcional): se añaden a cada petición. Para bajar el razonamiento de un modelo que piensa, prueba {"reasoning_effort":"low"}',extra),
     h('div',{class:'btns'},btn('Cargar modelos',async()=>{read();try{const ms=await fetchModels(p);dl.replaceChildren(...ms.map(m=>h('option',{value:m})));toast(ms.length+' modelos disponibles: toca el campo Modelo')}catch(e){toast('No se pudo: '+e.message,4000)}}),
       btn('Probar',async()=>{read();toast('Probando…');try{const r=await llm(p,{system:'Responde en una palabra.',messages:[{role:'user',content:'Di "ok"'}],maxTokens:20});toast('Conexión OK: '+r.trim().slice(0,30))}catch(e){toast(e.message,5000)}})),
-    h('div',{class:'btns'},btn('Guardar',async()=>{read();S.settings.profiles=[...S.settings.profiles.filter(x=>x.id!==p.id),p];if(!S.settings.activeProfile||isNew&&S.settings.profiles.length===1)S.settings.activeProfile=p.id;await saveSettings();await closeTop();R.settings()},'pri'),
+    h('div',{class:'btns'},btn('Guardar',async()=>{read();if(p.extra){try{JSON.parse(p.extra)}catch{return toast('Parámetros extra: JSON no válido')}}S.settings.profiles=[...S.settings.profiles.filter(x=>x.id!==p.id),p];if(!S.settings.activeProfile||isNew&&S.settings.profiles.length===1)S.settings.activeProfile=p.id;await saveSettings();await closeTop();R.settings()},'pri'),
       !isNew?btn('Eliminar',async()=>{if(!confirm('¿Eliminar conexión?'))return;S.settings.profiles=S.settings.profiles.filter(x=>x.id!==p.id);if(S.settings.activeProfile===p.id)S.settings.activeProfile=(S.settings.profiles[0]||{}).id||null;if(S.settings.auxProfile===p.id)S.settings.auxProfile='';await saveSettings();await closeTop();R.settings()},'danger'):null),
     h('small',{},'La clave se guarda solo en este dispositivo (IndexedDB) y se envía únicamente al proveedor elegido.')])}
 function editPreset(src){const isNew=!src;const p=src?{...src}:{id:uid(),name:'',instructions:'',temperature:0.85,maxTokens:1000};
   const name=h('input',{value:p.name}),ins=h('textarea',{rows:9,value:p.instructions}),temp=h('input',{type:'number',step:'0.05',min:0,max:2,value:p.temperature}),mt=h('input',{type:'number',min:50,max:8000,value:p.maxTokens});
   sheet(isNew?'Nuevo preset':'Editar preset',[field('Nombre',name),field('Instrucciones (usa {{char}} y {{user}})',ins),field('Temperatura',temp),field('Tokens máximos por respuesta',mt),
-    h('div',{class:'btns'},btn('Guardar',async()=>{if(!name.value.trim())return toast('Falta el nombre');Object.assign(p,{name:name.value.trim(),instructions:ins.value,temperature:Number(temp.value)||0.85,maxTokens:Number(mt.value)||600});await put('presets',p);if(isNew){S.settings.presetId=p.id;await saveSettings()}await closeTop();R.settings()},'pri'),
+    h('div',{class:'btns'},btn('Guardar',async()=>{if(!name.value.trim())return toast('Falta el nombre');Object.assign(p,{name:name.value.trim(),instructions:ins.value,temperature:Number(temp.value)||0.85,maxTokens:Math.min(32000,Math.max(50,Number(mt.value)||1000))});await put('presets',p);if(isNew){S.settings.presetId=p.id;await saveSettings()}await closeTop();R.settings()},'pri'),
       !isNew&&S.presets.size>1?btn('Eliminar',async()=>{if(!confirm('¿Eliminar preset?'))return;await rm('presets',p.id);if(S.settings.presetId===p.id){S.settings.presetId=[...S.presets.keys()][0];await saveSettings()}await closeTop();R.settings()},'danger'):null)])}
 
 /* ================= arranque ================= */
